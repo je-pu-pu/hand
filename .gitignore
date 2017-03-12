@@ -1,0 +1,13 @@
+/main/Release
+/main/Gamma
+/main/Debug
+/main/*.wav
+/main/.*
+/main/*.def
+/main/*.dll
+/main/*.lib
+/gamma/
+/main/*.opendb
+/main/*.filters
+/main/*.sdf
+/main/*.user
