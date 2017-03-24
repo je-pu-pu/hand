@@ -37,6 +37,8 @@ private:
 	float l_slider_start_tip_y_;		/// 左スライダーの移動を開始した時の人差し指の位置
 	float r_slider_start_tip_y_;		/// 右スライダーの移動を開始した時の人差し指の位置
 
+	int hand_count_ = 0;
+
 protected:
 	void start_l_slider_moving( float y )
 	{
@@ -215,6 +217,8 @@ public:
 		return result;
 	}
 
+	int hand_count() const { return hand_count_;  }
+
 public:
     void onInit( const Leap::Controller& ) override { std::cout << "Initialized" << std::endl; }
 	
@@ -235,6 +239,8 @@ public:
 	{
 		const Leap::Frame frame = controller.frame();
 		
+		hand_count_ = frame.hands().count();
+
 		// std::cout << "hands: " << frame.hands().count();
 		// std::cout << ", extended fingers: " << frame.fingers().extended().count();
 
