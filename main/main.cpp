@@ -55,9 +55,9 @@ public:
 
 	Delay<> delay;
 
-	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.05f );
-	float lead_l_volume = 0.f; // common::chase_value< float >( 0.f, 0.f, 0.f );
-	float lead_r_volume = 0.f; // common::chase_value< float >( 0.f, 0.f, 0.f );
+	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
+	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
+	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
 
 	MyApp( int in, int out )
 		: AudioApp( in, out )
@@ -123,7 +123,7 @@ public:
 
 	void onAudio( AudioIOData& io )
 	{
-		if ( timer() && ! finished )
+		if ( timer() && ( ! finished || leap.is_page_decremented() ) )
 		{
 			page = leap.page();
 
@@ -133,13 +133,13 @@ public:
 			{
 				page_down.reset();
 
-				on_page_changed( page, true );
+				on_page_changed( page, false );
 			}
 			if ( leap.pop_page_incremented() )
 			{
 				page_up.reset();
 
-				on_page_changed( page, false );
+				on_page_changed( page, true );
 			}
 
 			if ( leap.pop_tapped() || page == 9 )
@@ -251,16 +251,14 @@ public:
 			{
 				if ( leap.rh_pos().z < -30.f )
 				{
-					lead_r_volume += 0.1f;
-					lead_r_volume = std::min( lead_r_volume, 1.f );
+					lead_r_volume.target_value() = 1.f;
 				}
 			}
 			else if ( page == 6 )
 			{
 				if ( leap.lh_pos().z < -30.f )
 				{
-					lead_l_volume += 0.1f;
-					lead_l_volume = std::min( lead_l_volume, 1.f );
+					lead_l_volume.target_value() = 1.f;
 				}
 			}
 			else if ( page == 7 )
@@ -288,11 +286,14 @@ public:
 				kick.range( 0.f, 10.f );
 				kick.reset();
 			}
+
+			lead_l_volume.chase();
+			lead_r_volume.chase();
 		}
 
 		const float lead_rate[ 16 ] = { 261.626f, 293.665f, 329.628, 391.995, 440.000, 523.251f, 587.330f, 659.255f, 783.991f, 880.000f, 1046.502f, 1174.659f, 1318.510f, 1567.982, 1760.000f, 2093.005f };
-		lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_if_tip_pos().y, 16 ) ] / 110.f );
-		lead_r.rate( lead_rate[ leap.y_pos_to_index( leap.rh_if_tip_pos().y, 16 ) ] / 110.f );
+		lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, 16 ) ] / 110.f );
+		lead_r.rate( lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, 16 ) ] / 110.f );
 
 		while ( io() )
 		{
@@ -325,8 +326,8 @@ public:
 			s +=  snare() *  snare_volume_of_page[ page ];
 			s +=   bass() *   bass_volume_of_page[ page ] * bass_volume.value();
 			
-			s += lead_l() * lead_l_volume_of_page[ page ] * lead_l_volume;
-			s += lead_r() * lead_r_volume_of_page[ page ] * lead_r_volume;
+			s += lead_l() * lead_l_volume_of_page[ page ] * lead_l_volume.value();
+			s += lead_r() * lead_r_volume_of_page[ page ] * lead_r_volume.value();
 
 			s += tap() * key_tap_volume_of_page[ page ];
 			
@@ -350,12 +351,16 @@ public:
 
 		if ( page == 5 )
 		{
-			lead_r_volume = 0.2f;
+			lead_r_volume.target_value() = 0.2f;
 		}
-
-		if ( page == 6 )
+		else if ( page == 6 )
 		{
-			lead_l_volume = 0.2f;
+			lead_l_volume.target_value() = 0.2f;
+		}
+		else if ( page == 7 )
+		{
+			lead_l_volume.target_value() = 1.f;
+			lead_r_volume.target_value() = 1.f;
 		}
 
 

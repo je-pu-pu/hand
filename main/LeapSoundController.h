@@ -180,7 +180,7 @@ public:
 
 		page_--;
 		page_decremented_ = true;
-			
+
 		return true;
 	}
 
@@ -193,7 +193,7 @@ public:
 
 		page_++;
 		page_incremented_ = true;
-			
+
 		return true;
 	}
 
@@ -209,6 +209,9 @@ public:
 		page_decremented_ = false;
 		return result;
 	}
+
+	bool is_page_incremented() const { return page_incremented_; }
+	bool is_page_decremented() const { return page_decremented_; }
 
 	bool pop_tapped()
 	{
