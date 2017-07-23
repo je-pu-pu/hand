@@ -55,7 +55,7 @@ public:
 
 	Delay<> delay;
 
-	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
+	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.05f );
 	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
 	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
 
