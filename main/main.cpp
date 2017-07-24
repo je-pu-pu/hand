@@ -16,10 +16,10 @@ frequencies (f1+f2)/2 and (f1-f2)/2.
 #include "chase_value.h"
 
 #include "AudioApp.h"
-#include "Gamma/Oscillator.h"
-#include "Gamma/Envelope.h"
-#include "Gamma/SamplePlayer.h"
-#include "Gamma/Effects.h"
+#include <Gamma/Oscillator.h>
+#include <Gamma/Envelope.h>
+#include <Gamma/SamplePlayer.h>
+#include <Gamma/Effects.h>
 
 #define NOMINMAX
 #include <windows.h>

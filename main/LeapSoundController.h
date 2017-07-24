@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cstring>
 #include <chrono>
-#include "Leap.h"
+#include <Leap.h>
 
 class LeapSoundController : public Leap::Listener
 {
@@ -138,7 +138,7 @@ public:
 		std::cout << "slider R : " << page_ << " : " << r_slider_[ page_ ] << std::endl;
 	}
 
-	int x_pos_to_rate( float x ) const
+	float x_pos_to_rate( float x ) const
 	{
 		float rate = ( x + 1000.f ) / 2000.f;
 
