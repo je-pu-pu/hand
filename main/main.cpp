@@ -21,6 +21,8 @@ frequencies (f1+f2)/2 and (f1-f2)/2.
 #include <Gamma/SamplePlayer.h>
 #include <Gamma/Effects.h>
 
+#include <boost/asio.hpp>
+
 #define NOMINMAX
 #include <windows.h>
 
@@ -36,6 +38,8 @@ using namespace gam;
 #else
 #pragma comment( lib, "gamma.lib" )
 #endif
+
+void send_fire();
 
 LeapSoundController leap;
 
@@ -125,9 +129,9 @@ public:
 	{
 		if ( timer() && ( ! finished || leap.is_page_decremented() ) )
 		{
-			page = leap.page();
-
 			key_input();
+
+			page = leap.page();
 
 			if ( leap.pop_page_decremented() )
 			{
@@ -363,8 +367,14 @@ public:
 			lead_r_volume.target_value() = 1.f;
 		}
 
-
-		if ( ! incremented )
+		if ( incremented )
+		{
+			if ( page == 9 )
+			{
+				send_fire();
+			}
+		}
+		else
 		{
 			if ( page == 1 )
 			{
@@ -380,8 +390,43 @@ public:
 	}
 };
 
+
+boost::asio::io_service io_service;
+boost::asio::ip::tcp::socket server_socket( io_service );
+boost::asio::ip::tcp::acceptor acceptor( io_service, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(), 8080 ) );
+bool is_central_connected = false;
+
+std::thread start_server()
+{
+	return std::thread( [] () {
+		try
+		{
+			acceptor.accept( server_socket );
+			is_central_connected = true;
+		}
+		catch ( std::exception e )
+		{
+			std::cout << "error : " << e.what();
+		}
+	} );
+}
+
+void send_fire()
+{
+	if ( ! is_central_connected )
+	{
+		std::cout << "central is not connected." << std::endl;
+		return;
+	}
+
+	size_t s = boost::asio::write( server_socket, boost::asio::buffer( "fire" ) );
+	std::cout << "write " << s << std::endl;
+}
+
 int main( int, char** )
 {
+	std::thread server_thread = start_server();
+
 	gam::AudioDevice::printAll();
 
 	int in = 0, out = 0;
@@ -422,6 +467,7 @@ int main( int, char** )
 
 	config.save_file( "./config.txt" );
 
+	server_thread.detach();
+
 	return 0;
 }
-
