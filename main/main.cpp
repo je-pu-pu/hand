@@ -55,6 +55,8 @@ public:
 	Accum<> timer;
 
 	SamplePlayer<> tap, page_down, page_up, kick, snare;
+	ADSR<> kick_env, snare_env;
+
 	SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r;
 
 	Delay<> delay;
@@ -65,6 +67,8 @@ public:
 
 	MyApp( int in, int out )
 		: AudioApp( in, out )
+		, kick_env()
+		, snare_env()
 	{
 		timer.freq( 120.f / 60.f * 16.f );
 		timer.phaseMax();	
@@ -148,8 +152,10 @@ public:
 
 			if ( leap.pop_tapped() || page == 9 )
 			{
-				const float tap_rate[ 21 ] = { 130.813f, 146.832f, 164.814f, 195.998f, 220.000f, 261.626f, 293.665f, 329.628, 391.995, 440.000, 523.251f, 587.330f, 659.255f, 783.991f, 880.000f, 1046.502f, 1174.659f, 1318.510f, 1567.982, 1760.000f, 2093.005f };
-				tap.rate( tap_rate[ leap.y_pos_to_index( leap.rh_if_tip_pos().y, 15 ) + rand() % 6 ] / 220.f );
+				const int max_notes = 21;
+				const int random_note_range = 5;
+				const float tap_rate[ max_notes ] = { 130.813f, 146.832f, 164.814f, 195.998f, 220.000f, 261.626f, 293.665f, 329.628, 391.995, 440.000, 523.251f, 587.330f, 659.255f, 783.991f, 880.000f, 1046.502f, 1174.659f, 1318.510f, 1567.982, 1760.000f, 2093.005f };
+				tap.rate( tap_rate[ leap.y_pos_to_index( leap.rh_if_tip_pos().y, max_notes ) + rand() % random_note_range ] / 220.f );
 
 				tap.reset();
 			}
@@ -160,12 +166,12 @@ public:
 					{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
 				},
 				{
-					{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 },
-					{ 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
+					{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0 },
+					{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1 },
 				},
 				{
 					{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1 },
-					{ 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1 },
+					{ 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 },
 				}
 			};
 
@@ -188,24 +194,26 @@ public:
 
 			const int is_fill_in = p_step < 3 ? 0 : 1;
 
-			const int  kick_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 1, 1, 0, 0, 1, 2, 0 };
+			const int  kick_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 0, 1, 0, 0, 1, 2, 0 };
 			const int snare_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
+
+			step = ( step + 1 ) % 16;
 
 			if ( kick_on[ kick_pattern[ page ] ][ is_fill_in ][ step ] )
 			{
-				kick.range( std::min( 0.9f, leap.l_slider( 2 ) ), 0.25f );
+				kick.range( std::min( 0.9f, leap.l_slider( 2 ) ), 0.2f );
 				kick.rate( 0.5f + leap.r_slider( 2 ) );
 				kick.reset();
+				kick_env.reset();
 			}
 
 			if ( snare_on[ snare_pattern[ page ] ][ is_fill_in ][ step ] )
 			{
-				snare.range( std::min( 0.9f, leap.l_slider( 3 ) ), 0.25f );
+				snare.range( std::min( 0.9f, leap.l_slider( 3 ) ), 0.2f );
 				snare.rate( 0.5f + leap.r_slider( 3 ) );
 				snare.reset();
+				snare_env.reset();
 			}
-
-			step = ( step + 1 ) % 16;
 
 			if ( step == 0 )
 			{
@@ -326,8 +334,8 @@ public:
 
 			float s = 0.f;
 			
-			s +=   kick() *   kick_volume_of_page[ page ];
-			s +=  snare() *  snare_volume_of_page[ page ];
+			s +=   kick() *   kick_volume_of_page[ page ] * kick_env();
+			s +=  snare() *  snare_volume_of_page[ page ] * snare_env();
 			s +=   bass() *   bass_volume_of_page[ page ] * bass_volume.value();
 			
 			s += lead_l() * lead_l_volume_of_page[ page ] * lead_l_volume.value();
