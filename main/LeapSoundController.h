@@ -20,7 +20,8 @@ private:
 	float l_slider_[ PAGES ];
 	float r_slider_[ PAGES ];
 
-	bool tapped_ = false;
+	bool l_tapped_ = false;
+	bool r_tapped_ = false;
 
 	Leap::Vector lh_pos_;
 	Leap::Vector rh_pos_;
@@ -51,9 +52,12 @@ protected:
 
 	void stop_l_slider_moving()
 	{
-		is_l_slider_moving_ = false;
+		if ( is_l_slider_moving_ )
+		{
+			is_l_slider_moving_ = false;
 
-		std::cout << "L Slider : Stop" << std::endl;
+			std::cout << "L Slider : Stop" << std::endl;
+		}
 	}
 
 	void start_r_slider_moving( float y )
@@ -67,9 +71,12 @@ protected:
 
 	void stop_r_slider_moving()
 	{
-		is_r_slider_moving_ = false;
+		if ( is_r_slider_moving_ )
+		{
+			is_r_slider_moving_ = false;
 
-		std::cout << "R Slider : Stop" << std::endl;
+			std::cout << "R Slider : Stop" << std::endl;
+		}
 	}
 
 	void move_l_slider( float y )
@@ -128,14 +135,14 @@ public:
 	{
 		l_slider_[ page ] = std::max( 0.f, std::min( 1.f, value ) );
 
-		std::cout << "slider L : " << page_ << " : " << l_slider_[ page_ ] << std::endl;
+		// std::cout << "slider L : " << page_ << " : " << l_slider_[ page_ ] << std::endl;
 	}
 
 	void set_r_slider( int page, float value )
 	{
 		r_slider_[ page ] = std::max( 0.f, std::min( 1.f, value ) );
 
-		std::cout << "slider R : " << page_ << " : " << r_slider_[ page_ ] << std::endl;
+		// std::cout << "slider R : " << page_ << " : " << r_slider_[ page_ ] << std::endl;
 	}
 
 	float x_pos_to_rate( float x ) const
@@ -178,6 +185,9 @@ public:
 			return false;
 		}
 
+		stop_l_slider_moving();
+		stop_r_slider_moving();
+
 		page_--;
 		page_decremented_ = true;
 
@@ -190,6 +200,9 @@ public:
 		{
 			return false;
 		}
+
+		stop_l_slider_moving();
+		stop_r_slider_moving();
 
 		page_++;
 		page_incremented_ = true;
@@ -213,10 +226,17 @@ public:
 	bool is_page_incremented() const { return page_incremented_; }
 	bool is_page_decremented() const { return page_decremented_; }
 
-	bool pop_tapped()
+	bool pop_l_tapped()
 	{
-		bool result = tapped_;
-		tapped_ = false;
+		bool result = l_tapped_;
+		l_tapped_ = false;
+		return result;
+	}
+
+	bool pop_r_tapped()
+	{
+		bool result = r_tapped_;
+		r_tapped_ = false;
 		return result;
 	}
 
@@ -447,7 +467,7 @@ protected:
 		}
 
 		// std::cout << "swipe : " << swipe.hands().isEmpty() << std::endl;
-		std::cout << "page : " << page_ << std::endl;
+		std::cout << "leap page : " << page_ << std::endl;
 	}
 
 	void on_key_tap_gesture( const Leap::KeyTapGesture& tap )
@@ -455,7 +475,15 @@ protected:
 		Leap::Finger f( tap.pointable() );
 
 		std::cout << "key tap : " << tap.toString() << " : " << ( f.hand().isLeft() ? "L" : "R" ) << f.type() << std::endl;
-		tapped_ = true;
+
+		if ( f.hand().isLeft() )
+		{
+			l_tapped_ = true;
+		}
+		else
+		{
+			r_tapped_ = true;
+		}
 	}
 
 	void on_screen_tap_gesture( const Leap::ScreenTapGesture& tap )

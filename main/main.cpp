@@ -135,27 +135,26 @@ public:
 		{
 			key_input();
 
-			page = leap.page();
-
 			if ( leap.pop_page_decremented() )
 			{
 				page_down.reset();
-
-				on_page_changed( page, false );
 			}
 			if ( leap.pop_page_incremented() )
 			{
 				page_up.reset();
-
-				on_page_changed( page, true );
 			}
 
-			if ( leap.pop_tapped() || page == 9 )
+			const bool l_tapped = leap.pop_l_tapped();
+			const bool r_tapped = leap.pop_r_tapped();
+
+			if ( l_tapped || r_tapped || page == 9 )
 			{
 				const int max_notes = 21;
 				const int random_note_range = 5;
 				const float tap_rate[ max_notes ] = { 130.813f, 146.832f, 164.814f, 195.998f, 220.000f, 261.626f, 293.665f, 329.628, 391.995, 440.000, 523.251f, 587.330f, 659.255f, 783.991f, 880.000f, 1046.502f, 1174.659f, 1318.510f, 1567.982, 1760.000f, 2093.005f };
-				tap.rate( tap_rate[ leap.y_pos_to_index( leap.rh_if_tip_pos().y, max_notes ) + rand() % random_note_range ] / 220.f );
+				const auto tapped_y = l_tapped ? leap.lh_if_tip_pos().y : leap.rh_if_tip_pos().y;
+
+				tap.rate( tap_rate[ leap.y_pos_to_index( tapped_y, max_notes ) + rand() % random_note_range ] / 220.f );
 
 				tap.reset();
 			}
@@ -218,11 +217,29 @@ public:
 			if ( step == 0 )
 			{
 				p_step = ( p_step + 1 ) % 4;
-				page = leap.page();
-
+				
 				bass.reset();
 				// bass_volume.fit_to_target();
 			}
+
+			// 1 小節目の 4 拍のみページを行う
+			// ( 2 ～ 4 小節目でページ変更のジェスチャーした場合でも 1 小節目にページを変更する )
+			if ( p_step == 0 && ( leap.page() != 9 || step == 0  ) )
+			{
+				// ページの変更
+				if ( page < leap.page() )
+				{
+					page++;
+					on_page_changed( page, true );
+				}
+				else if ( page > leap.page() )
+				{
+					page--;
+					on_page_changed( page, false );
+				}
+			}
+
+
 
 			if ( page > 1 )
 			{
@@ -244,7 +261,7 @@ public:
 
 				bass_volume.chase();
 
-				std::cout << "bass volume : " << bass_volume.value() << ", " << bass_volume.target_value() << std::endl;
+				// std::cout << "bass volume : " << bass_volume.value() << ", " << bass_volume.target_value() << std::endl;
 
 				// ベースの
 				/*
@@ -355,10 +372,12 @@ public:
 
 	void on_page_changed( int page, bool incremented )
 	{
+		std::cout << "page : " << page << std::endl;
+
 		if ( page == 1 )
 		{
 			bass_volume.target_value() = 0.f;
-			std::cout << "pc : " << bass_volume.target_value() << std::endl;
+			// std::cout << "pc : " << bass_volume.target_value() << std::endl;
 		}
 
 		if ( page == 5 )
