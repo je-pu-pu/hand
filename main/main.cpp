@@ -46,6 +46,10 @@ LeapSoundController leap;
 class Note
 {
 public:
+	static const float F2;
+	static const float G2;
+	static const float A2;
+
 	static const float C3;
 	static const float D3;
 	static const float E3;
@@ -73,6 +77,9 @@ public:
 	static const float C7;
 };
 
+const float Note::F2 = 87.307f;
+const float Note::G2 = 97.999f;
+const float Note::A2 = 110.f;
 const float Note::C3 = 130.813f;
 const float Note::D3 = 146.832f;
 const float Note::E3 = 164.814f;
@@ -104,7 +111,7 @@ public:
 	const float RHYTHM_RATE_MIN = 0.5f;
 	const float RHYTHM_RATE_MAX = 2.f;
 
-	enum Page
+	enum class Page
 	{
 		TAP = 0,	// キータップのデモ
 		BASS,		// ベースのデモ
@@ -324,6 +331,11 @@ public:
 		lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, 16 ) ] / 110.f, 0.01f ) );
 	}
 
+	int get_page_index() const
+	{
+		return static_cast< int >( page );
+	}
+
 	void mix( AudioIOData& io )
 	{
 		const std::array< float, PAGES >    kick_volume_of_page = { 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 1.f, 2.f };
@@ -338,21 +350,21 @@ public:
 
 		float s = 0.f;
 			
-		s +=   kick() *   kick_volume_of_page[ page ] * kick_env();
-		s +=  snare() *  snare_volume_of_page[ page ] * snare_env();
-		s +=   bass() *   bass_volume_of_page[ page ] * bass_volume.value();
+		s +=   kick() *   kick_volume_of_page[ get_page_index() ] * kick_env();
+		s +=  snare() *  snare_volume_of_page[ get_page_index() ] * snare_env();
+		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value();
 			
-		s += lead_l() * lead_l_volume_of_page[ page ] * lead_l_volume.value() * leap.lh_is_valid();
-		s += lead_r() * lead_r_volume_of_page[ page ] * lead_r_volume.value() * leap.rh_is_valid();
+		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * leap.lh_is_valid();
+		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * leap.rh_is_valid();
 
-		s += tap() * key_tap_volume_of_page[ page ];
+		s += tap() * key_tap_volume_of_page[ get_page_index() ];
 			
 		s += page_down() + page_up();
 		s /= static_cast< float >( Part::MAX );
 
 		s = compress( s );
 		
-		s += delay( s * delay_gain[ page ] + delay() * delay_feedbak[ page ] );
+		s += delay( s * delay_gain[ get_page_index() ] + delay() * delay_feedbak[ get_page_index() ] );
 		s = compress( s );
 
 		io.out( 0 ) = s;
@@ -420,7 +432,7 @@ public:
 			const auto tapped_y = l_tapped ? leap.lh_pos().y : leap.rh_pos().y;
 			const int tap_index = leap.y_pos_to_index( tapped_y, tap_note.size() - random_note_range ) + rand() % random_note_range;
 			
-			tap.rate( tap_note[ tap_index ] / 220.f );
+			tap.rate( tap_note[ tap_index ] / Note::A3 );
 			tap.reset();
 		}
 
@@ -463,7 +475,7 @@ public:
 
 		step = ( step + 1 ) % 16;
 
-		if ( kick_on[ kick_pattern[ page ] ][ is_fill_in ][ step ] )
+		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
 		{
 			kick.range( std::min( 0.9f, leap.l_slider( 2 ) ), 0.15f );
 			kick.rate( rate_to_range( leap.r_slider( 2 ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
@@ -471,7 +483,7 @@ public:
 			kick_env.reset();
 		}
 
-		if ( snare_on[ snare_pattern[ page ] ][ is_fill_in ][ step ] )
+		if ( snare_on[ snare_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
 		{
 			snare.range( std::min( 0.9f, leap.l_slider( 3 ) ), 0.15f );
 			snare.rate( rate_to_range( leap.r_slider( 3 ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
@@ -493,27 +505,27 @@ public:
 		if ( p_step == 0 && ( leap.page() != 9 || step == 0  ) )
 		{
 			// ページの変更
-			if ( page < leap.page() )
+			if ( get_page_index() < leap.page() )
 			{
-				page = static_cast< Page >( page + 1 );
+				page = static_cast< Page >( get_page_index() + 1 );
 				on_page_changed( page, true );
 			}
-			else if ( page > leap.page() )
+			else if ( get_page_index() > leap.page() )
 			{
-				page = static_cast< Page >( page - 1 );
+				page = static_cast< Page >( get_page_index() - 1 );
 				on_page_changed( page, false );
 			}
 		}
 
-		if ( page > 1 )
+		if ( get_page_index() > 1 )
 		{
 			bass_volume.fit( 1.f );
 		}
 
-		const float bass_rate[ 4 ] = { 87.307f, 97.999f, 110.f, 130.813f };
-		bass.rate( bass_rate[ p_step ] / 110.f );
+		const std::array< float, 4 > bass_rate = { Note::F2, Note::G2, Note::A2, Note::C3 };
+		bass.rate( bass_rate[ p_step ] / Note::A2 );
 
-		if ( page == 1 )
+		if ( page == Page::BASS )
 		{
 			// ベースのボリュームが左右の手の距離によって変わる
 			if ( leap.hand_count() == 2 )
@@ -540,28 +552,28 @@ public:
 			bass.rate( bass_rate[ bass_note_index ] / 110.f );
 			*/
 		}
-		else if ( page == 5 )
+		else if ( page == Page::LEAD_R )
 		{
 			if ( leap.rh_pos().z < -30.f )
 			{
 				lead_r_volume.target_value() = 1.f;
 			}
 		}
-		else if ( page == 6 )
+		else if ( page == Page::LEAD_L )
 		{
 			if ( leap.lh_pos().z < -30.f )
 			{
 				lead_l_volume.target_value() = 1.f;
 			}
 		}
-		else if ( page == 7 )
+		else if ( page == Page::FREE )
 		{
 			if ( step / 2 % 2 == 1 )
 			{
 				bass.rate( bass.rate() * 2.f );
 			}
 		}
-		else if ( page == 8 )
+		else if ( page == Page::CLIMAX )
 		{
 			if ( step % 4 == 2 )
 			{
@@ -572,7 +584,7 @@ public:
 				bass.rate( bass.rate() * 3.f / 2.f );
 			}
 		}
-		else if ( page == 9 )
+		else if ( page == Page::FINISH )
 		{
 			finished = true;
 			kick.rate( 1.f );
@@ -586,7 +598,7 @@ public:
 
 	std::string get_page_name( Page page ) const
 	{
-		static std::array< std::string, Page::MAX > page_name_map = {
+		static std::array< std::string, static_cast< int >( Page::MAX ) > page_name_map = {
 			"TAP",
 			"BASS",
 			"KICK",
@@ -607,22 +619,22 @@ public:
 		std::cout << "--------------------" << std::endl;
 		std::cout << "page : " << get_page_name( page ) << std::endl;
 
-		if ( page == 1 )
+		if ( page == Page::BASS )
 		{
 			bass_volume.target_value() = 0.f;
 			// std::cout << "pc : " << bass_volume.target_value() << std::endl;
 		}
 
-		if ( page == 5 )
+		if ( page == Page::LEAD_R )
 		{
 			lead_r_volume.target_value() = 0.2f;
 		}
-		else if ( page == 6 )
+		else if ( page == Page::LEAD_L )
 		{
 			lead_r_volume.target_value() = 1.f;
 			lead_l_volume.target_value() = 0.2f;
 		}
-		else if ( page == 7 )
+		else if ( page == Page::FREE )
 		{
 			lead_l_volume.target_value() = 1.f;
 			lead_r_volume.target_value() = 1.f;
@@ -630,20 +642,20 @@ public:
 
 		if ( incremented )
 		{
-			if ( page == 9 )
+			if ( page == Page::FINISH )
 			{
 				send_fire();
 			}
 		}
 		else
 		{
-			if ( page == 1 )
+			if ( page == Page::BASS )
 			{
 				step = 0;
 				p_step = 0;
 			}
 
-			if ( page == 8 )
+			if ( page == Page::CLIMAX )
 			{
 				finished = false;
 			}
