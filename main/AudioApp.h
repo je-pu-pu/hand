@@ -19,19 +19,19 @@ public:
 	{
 		mAudioIO.append( *this );
 		
-		// auto device_in = AudioDevice( in_device_no );
+		auto device_in = AudioDevice( in_device_no );
 		auto device_out = AudioDevice( out_device_no );
 
-		// std::cout << "in  : " << device_in.name() << std::endl;
+		std::cout << "in  : " << device_in.name() << std::endl;
 		std::cout << "out : " << device_out.name() << std::endl;
 
-		// mAudioIO.deviceIn( device_in );
+		mAudioIO.deviceIn( device_in );
 		mAudioIO.deviceOut( device_out );
 
-		initAudio( 44100 );
+		initAudio( 44100, 64, 2, 1 );
 	}
 
-	void initAudio( double framesPerSec, unsigned framesPerBuffer = 4, unsigned outChans = 2, unsigned inChans = 0 )
+	void initAudio( double framesPerSec, unsigned framesPerBuffer, unsigned outChans, unsigned inChans )
 	{
 		mAudioIO.framesPerSecond(framesPerSec);
 		mAudioIO.framesPerBuffer(framesPerBuffer);
@@ -40,7 +40,8 @@ public:
 		sampleRate(framesPerSec);
 	}
 
-	AudioIO& audioIO(){ return mAudioIO; }
+	AudioIO& audioIO() { return mAudioIO; }
+	const AudioIO& audioIO() const { return mAudioIO; }
 
 	void start( bool block = true )
 	{
@@ -56,7 +57,7 @@ public:
 			mAudioIO.stop();
 		}
 	}
-
+	
 private:
 	AudioIO mAudioIO;
 };

@@ -23,11 +23,11 @@ private:
 	bool l_tapped_ = false;
 	bool r_tapped_ = false;
 
-	Leap::Vector lh_pos_;
-	Leap::Vector rh_pos_;
+	Leap::Hand lh_;						/// 最新の左手
+	Leap::Hand rh_;						/// 最新の右手
 
-	Leap::Vector lh_if_tip_pos_;
-	Leap::Vector rh_if_tip_pos_;
+	Leap::Vector lh_pos_;				/// 最後の左手の位置
+	Leap::Vector rh_pos_;				/// 最後の右手の位置
 
 	bool is_l_slider_moving_ = false;	/// 現在左手がつまんでいるフラグ
 	bool is_r_slider_moving_ = false;	/// 現在右手がつまんでいるフラグ
@@ -35,8 +35,8 @@ private:
 	float l_slider_start_value_;		/// 左スライダーの移動を開始した時点での値
 	float r_slider_start_value_;		/// 右スライダーの移動を開始した時点での値
 
-	float l_slider_start_tip_y_;		/// 左スライダーの移動を開始した時の人差し指の位置
-	float r_slider_start_tip_y_;		/// 右スライダーの移動を開始した時の人差し指の位置
+	float l_slider_start_hand_y_;		/// 左スライダーの移動を開始した時の手の位置
+	float r_slider_start_hand_y_;		/// 右スライダーの移動を開始した時の手の位置
 
 	int hand_count_ = 0;
 
@@ -45,7 +45,7 @@ protected:
 	{
 		is_l_slider_moving_ = true;
 		l_slider_start_value_ = l_slider_[ page_ ];
-		l_slider_start_tip_y_ = y;
+		l_slider_start_hand_y_ = y;
 
 		std::cout << "L Slider : Start" << std::endl;
 	}
@@ -64,7 +64,7 @@ protected:
 	{
 		is_r_slider_moving_ = true;
 		r_slider_start_value_ = r_slider_[ page_ ];
-		r_slider_start_tip_y_ = y;
+		r_slider_start_hand_y_ = y;
 
 		std::cout << "R Slider : Start" << std::endl;
 	}
@@ -83,7 +83,7 @@ protected:
 	{
 		if ( is_l_slider_moving_ )
 		{
-			set_l_slider( page_, l_slider_start_value_ + ( y - l_slider_start_tip_y_ ) / 1000.f );
+			set_l_slider( page_, l_slider_start_value_ + ( y - l_slider_start_hand_y_ ) / 2000.f );
 		}
 	}
 
@@ -91,7 +91,7 @@ protected:
 	{
 		if ( is_r_slider_moving_ )
 		{
-			set_r_slider( page_, r_slider_start_value_ + ( y - r_slider_start_tip_y_ ) / 1000.f );
+			set_r_slider( page_, r_slider_start_value_ + ( y - r_slider_start_hand_y_ ) / 2000.f );
 		}
 	}
 
@@ -105,11 +105,11 @@ public:
 		}
 	}
 
+	bool lh_is_valid() const { return lh_.isValid(); }
+	bool rh_is_valid() const { return rh_.isValid(); }
+
 	const Leap::Vector& lh_pos() const { return lh_pos_; }
 	const Leap::Vector& rh_pos() const { return rh_pos_; }
-
-	const Leap::Vector& lh_if_tip_pos() const { return lh_if_tip_pos_; }
-	const Leap::Vector& rh_if_tip_pos() const { return rh_if_tip_pos_; }
 
 	const float l_slider( int page ) const
 	{
@@ -290,8 +290,8 @@ public:
 
 		auto hands = frame.hands();
 
-		auto r_hand = Leap::Hand::invalid();
-		auto l_hand = Leap::Hand::invalid();
+		lh_ = Leap::Hand::invalid();
+		rh_ = Leap::Hand::invalid();
 
 		for ( auto hl = hands.begin(); hl != hands.end(); ++hl )
 		{
@@ -307,54 +307,41 @@ public:
 			for ( auto fl = fingers.begin(); fl != fingers.end(); ++fl )
 			{
 				const auto finger = *fl;
-
-				if ( finger.type() == Leap::Finger::Type::TYPE_INDEX )
-				{
-					if ( hand.isLeft() )
-					{
-						lh_if_tip_pos_ = finger.tipPosition();
-
-						move_l_slider( lh_if_tip_pos_.y );
-					}
-					else if ( hand.isRight() )
-					{
-						rh_if_tip_pos_ = finger.tipPosition();
-
-						move_r_slider( rh_if_tip_pos_.y );
-					}
-				}
 			}
 
 			if ( hand.isLeft() )
 			{
-				lh_pos_ = hand.palmPosition();
+				lh_ = hand;
+				lh_pos_ = hand.wristPosition();
 
 				if ( ! is_l_slider_moving_ && hand.pinchStrength() >= 1.f )
 				{
-					start_l_slider_moving( lh_if_tip_pos_.y );
+					start_l_slider_moving( hand.wristPosition().y );
 				}
 				else if ( is_l_slider_moving_ && hand.pinchStrength() <= 0.f )
 				{
 					stop_l_slider_moving();
 				}
+
+				move_l_slider( hand.wristPosition().y );
 			}
 			else if ( hand.isRight() )
 			{
-				rh_pos_ = hand.palmPosition();
+				rh_ = hand;
+				rh_pos_ = hand.wristPosition();
 
 				if ( ! is_r_slider_moving_ && hand.pinchStrength() >= 1.f )
 				{
-					start_r_slider_moving( rh_if_tip_pos_.y );
+					start_r_slider_moving( hand.wristPosition().y );
 				}
 				else if ( is_r_slider_moving_ && hand.pinchStrength() <= 0.f )
 				{
 					stop_r_slider_moving();
 				}
+
+				move_r_slider( hand.wristPosition().y );
 			}
 		}
-
-		// std::cout << ", LH: " << lh_pos_.y << ", RH: " << rh_pos_.y;
-		// std::cout << std::endl;
 	}
 	
 	void onFocusGained(const Leap::Controller&) override { std::cout << "Focus Gained" << std::endl; }
@@ -474,7 +461,7 @@ protected:
 	{
 		Leap::Finger f( tap.pointable() );
 
-		std::cout << "key tap : " << tap.toString() << " : " << ( f.hand().isLeft() ? "L" : "R" ) << f.type() << std::endl;
+		// std::cout << "key tap : " << tap.toString() << " : " << ( f.hand().isLeft() ? "L" : "R" ) << f.type() << std::endl;
 
 		if ( f.hand().isLeft() )
 		{
