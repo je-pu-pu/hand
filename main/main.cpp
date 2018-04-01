@@ -53,20 +53,26 @@ public:
 	static const float C3;
 	static const float D3;
 	static const float E3;
+	static const float F3;
 	static const float G3;
 	static const float A3;
+	static const float B3;
 
 	static const float C4;
 	static const float D4;
 	static const float E4;
+	static const float F4;
 	static const float G4;
 	static const float A4;
+	static const float B4;
 
 	static const float C5;
 	static const float D5;
 	static const float E5;
+	static const float F5;
 	static const float G5;
 	static const float A5;
+	static const float B5;
 
 	static const float C6;
 	static const float D6;
@@ -80,21 +86,31 @@ public:
 const float Tone::F2 = 87.307f;
 const float Tone::G2 = 97.999f;
 const float Tone::A2 = 110.f;
+
 const float Tone::C3 = 130.813f;
 const float Tone::D3 = 146.832f;
 const float Tone::E3 = 164.814f;
+const float Tone::F3 = 174.614f;
 const float Tone::G3 = 195.998f;
 const float Tone::A3 = 220.000f;
+const float Tone::B3 = 246.942f;
+
 const float Tone::C4 = 261.626f;
 const float Tone::D4 = 293.665f;
 const float Tone::E4 = 329.628f;
+const float Tone::F4 = 349.228f;
 const float Tone::G4 = 391.995f;
 const float Tone::A4 = 440.000f;
+const float Tone::B4 = 493.883f;
+
 const float Tone::C5 = 523.251f;
 const float Tone::D5 = 587.330f;
 const float Tone::E5 = 659.255f;
+const float Tone::F5 = 698.456f;
 const float Tone::G5 = 783.991f;
 const float Tone::A5 = 880.000f;
+const float Tone::B5 = 987.767f;
+
 const float Tone::C6 = 1046.502f;
 const float Tone::D6 = 1174.659f;
 const float Tone::E6 = 1318.510f;
@@ -185,7 +201,7 @@ public:
 		lead_r.buffer( bass );
 
 		delay.maxDelay( 1.5f );
-		delay.delay( 60.f / 120.f );
+		delay.delay( 60.f / get_bpm() / 2.f );
 
 		// audioIO().gain( 0.f );
 
@@ -261,6 +277,8 @@ public:
 
 	void smoothing( gam::Array<float>& buf )
 	{
+		return;
+
 		const float range = 2;
 
 		for ( int n = 0; n < buf.size(); n++ )
@@ -320,15 +338,20 @@ public:
 
 	void update_lead()
 	{
-		const std::array< float, 16 > lead_rate = { 
-			Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4, Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5, Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,Tone::C7
-		};
-		
-		// lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, 16 ) ] / 110.f );
-		// lead_r.rate( lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, 16 ) ] / 110.f );
+		const std::array< float, 8 > tones_diatonic_low  = { Tone::C4, Tone::D4, Tone::E4, Tone::F4, Tone::G4, Tone::A4, Tone::B4, Tone::C5, };
+		const std::array< float, 8 > tones_diatonic_high = { Tone::C5, Tone::D5, Tone::E5, Tone::F5, Tone::G5, Tone::A5, Tone::B5, Tone::C6, };
+		const std::array< float, 6 > tones_pentatonic_low = { Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4, Tone::C5 };
+		const std::array< float, 6 > tones_pentatonic_mid = { Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5, Tone::C6 };
+		const std::array< float, 6 > tones_pentatonic_high = { Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,Tone::C7 };
 
-		lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, 16 ) ] / 110.f, 0.01f ) );
-		lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, 16 ) ] / 110.f, 0.01f ) );
+		const auto& tones_l = tones_pentatonic_low; // lead_rate_diatonic_low;
+		const auto& tones_r = tones_pentatonic_high; // lead_rate_diatonic_high;
+		
+		// lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, lead_rate.size() ) ] / Tone::A2 );
+		// lead_r.rate( lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, lead_rate.size() ) ] / Tone::A2 );
+
+		lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] / Tone::C3, 0.0005f ) );
+		lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] / Tone::C3, 0.0005f ) );
 	}
 
 	int get_page_index() const
@@ -354,8 +377,8 @@ public:
 		s +=  snare() *  snare_volume_of_page[ get_page_index() ] * snare_env();
 		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value();
 			
-		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * leap.lh_is_valid();
-		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * leap.rh_is_valid();
+		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * ( leap.lh_is_valid() ? 1.f : 0.5f );
+		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * ( leap.rh_is_valid() ? 1.f : 0.5f );
 
 		s += tap() * key_tap_volume_of_page[ get_page_index() ];
 			
@@ -522,8 +545,8 @@ public:
 			bass_volume.fit( 1.f );
 		}
 
-		const std::array< float, 4 > bass_rate = { Tone::F2, Tone::G2, Tone::A2, Tone::C3 };
-		bass.rate( bass_rate[ p_step ] / Tone::A2 );
+		const std::array< float, 4 > bass_rate = { Tone::C3, Tone::E3, Tone::F3, Tone::G3 }; // { Tone::F2, Tone::G2, Tone::A2, Tone::C3 };
+		bass.rate( bass_rate[ p_step ] / Tone::C3 );
 
 		if ( page == Page::BASS )
 		{

@@ -163,7 +163,11 @@ public:
 
 	const int y_pos_to_index( float y, int size ) const
 	{
-		int index = static_cast< int >( y / ( 1000.f / size ) );
+		const float max_y = 1000.f;
+		const float min_y = 100.f;
+
+		int index = static_cast< int >( ( y - min_y ) / ( max_y - min_y ) * size );
+
 		if ( index < 0 )
 		{
 			index = 0;
@@ -442,14 +446,14 @@ protected:
 		{
 			if ( decrement_page() )
 			{
-				swipe_stop_until_ = now + std::chrono::seconds( 1 );
+				swipe_stop_until_ = now + std::chrono::milliseconds( 500 );
 			}
 		}
 		else
 		{
 			if ( increment_page() )
 			{
-				swipe_stop_until_ = now + std::chrono::seconds( 1 );
+				swipe_stop_until_ = now + std::chrono::milliseconds( 500 );
 			}
 		}
 
