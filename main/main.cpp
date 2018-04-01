@@ -43,7 +43,7 @@ void send_fire();
 
 LeapSoundController leap;
 
-class Note
+class Tone
 {
 public:
 	static const float F2;
@@ -77,30 +77,30 @@ public:
 	static const float C7;
 };
 
-const float Note::F2 = 87.307f;
-const float Note::G2 = 97.999f;
-const float Note::A2 = 110.f;
-const float Note::C3 = 130.813f;
-const float Note::D3 = 146.832f;
-const float Note::E3 = 164.814f;
-const float Note::G3 = 195.998f;
-const float Note::A3 = 220.000f;
-const float Note::C4 = 261.626f;
-const float Note::D4 = 293.665f;
-const float Note::E4 = 329.628f;
-const float Note::G4 = 391.995f;
-const float Note::A4 = 440.000f;
-const float Note::C5 = 523.251f;
-const float Note::D5 = 587.330f;
-const float Note::E5 = 659.255f;
-const float Note::G5 = 783.991f;
-const float Note::A5 = 880.000f;
-const float Note::C6 = 1046.502f;
-const float Note::D6 = 1174.659f;
-const float Note::E6 = 1318.510f;
-const float Note::G6 = 1567.982f;
-const float Note::A6 = 1760.000f;
-const float Note::C7 = 2093.005f;
+const float Tone::F2 = 87.307f;
+const float Tone::G2 = 97.999f;
+const float Tone::A2 = 110.f;
+const float Tone::C3 = 130.813f;
+const float Tone::D3 = 146.832f;
+const float Tone::E3 = 164.814f;
+const float Tone::G3 = 195.998f;
+const float Tone::A3 = 220.000f;
+const float Tone::C4 = 261.626f;
+const float Tone::D4 = 293.665f;
+const float Tone::E4 = 329.628f;
+const float Tone::G4 = 391.995f;
+const float Tone::A4 = 440.000f;
+const float Tone::C5 = 523.251f;
+const float Tone::D5 = 587.330f;
+const float Tone::E5 = 659.255f;
+const float Tone::G5 = 783.991f;
+const float Tone::A5 = 880.000f;
+const float Tone::C6 = 1046.502f;
+const float Tone::D6 = 1174.659f;
+const float Tone::E6 = 1318.510f;
+const float Tone::G6 = 1567.982f;
+const float Tone::A6 = 1760.000f;
+const float Tone::C7 = 2093.005f;
 
 
 
@@ -321,7 +321,7 @@ public:
 	void update_lead()
 	{
 		const std::array< float, 16 > lead_rate = { 
-			Note::C4, Note::D4, Note::E4, Note::G4, Note::A4, Note::C5, Note::D5, Note::E5, Note::G5, Note::A5, Note::C6, Note::D6, Note::E6, Note::G6, Note::A6,Note::C7
+			Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4, Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5, Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,Tone::C7
 		};
 		
 		// lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, 16 ) ] / 110.f );
@@ -423,16 +423,16 @@ public:
 		{
 			const int random_note_range = 5;
 			const std::array< float, 21 > tap_note = {
-				Note::C3, Note::D3, Note::E3, Note::G3, Note::A3,
-				Note::C4, Note::D4, Note::E4, Note::G4, Note::A4,
-				Note::C5, Note::D5, Note::E5, Note::G5, Note::A5,
-				Note::C6, Note::D6, Note::E6, Note::G6, Note::A6,
-				Note::C7
+				Tone::C3, Tone::D3, Tone::E3, Tone::G3, Tone::A3,
+				Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4,
+				Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5,
+				Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,
+				Tone::C7
 			};
 			const auto tapped_y = l_tapped ? leap.lh_pos().y : leap.rh_pos().y;
 			const int tap_index = leap.y_pos_to_index( tapped_y, tap_note.size() - random_note_range ) + rand() % random_note_range;
 			
-			tap.rate( tap_note[ tap_index ] / Note::A3 );
+			tap.rate( tap_note[ tap_index ] / Tone::A3 );
 			tap.reset();
 		}
 
@@ -522,8 +522,8 @@ public:
 			bass_volume.fit( 1.f );
 		}
 
-		const std::array< float, 4 > bass_rate = { Note::F2, Note::G2, Note::A2, Note::C3 };
-		bass.rate( bass_rate[ p_step ] / Note::A2 );
+		const std::array< float, 4 > bass_rate = { Tone::F2, Tone::G2, Tone::A2, Tone::C3 };
+		bass.rate( bass_rate[ p_step ] / Tone::A2 );
 
 		if ( page == Page::BASS )
 		{
