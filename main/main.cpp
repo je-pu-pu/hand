@@ -46,6 +46,11 @@ LeapSoundController leap;
 class Tone
 {
 public:
+	static const float F1;
+	static const float G1;
+	static const float A1;
+
+	static const float C2;
 	static const float F2;
 	static const float G2;
 	static const float A2;
@@ -83,6 +88,11 @@ public:
 	static const float C7;
 };
 
+const float Tone::F1 = 43.654f;
+const float Tone::G1 = 48.999f;
+const float Tone::A1 = 55.000f;
+
+const float Tone::C2 = 65.406f;
 const float Tone::F2 = 87.307f;
 const float Tone::G2 = 97.999f;
 const float Tone::A2 = 110.f;
@@ -163,7 +173,7 @@ public:
 	SamplePlayer<> tap, page_down, page_up, kick, snare;
 	ADSR<> kick_env, snare_env;
 
-	SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r;
+	SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r, pad1, pad2, pad3;
 
 	Delay<> delay;
 
@@ -267,6 +277,9 @@ public:
 			bass.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
 			lead_l.buffer( bass );
 			lead_r.buffer( bass );
+			pad1.buffer( bass );
+			pad2.buffer( bass );
+			pad3.buffer( bass );
 			
 			kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
 			snare.buffer( kick );
@@ -347,11 +360,14 @@ public:
 		const auto& tones_l = tones_pentatonic_low; // lead_rate_diatonic_low;
 		const auto& tones_r = tones_pentatonic_high; // lead_rate_diatonic_high;
 		
+		const float chase_speed_l = 1.f; // 0.0001f;
+		const float chase_speed_r = 1.f; // 0.0005f;
+
 		// lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, lead_rate.size() ) ] / Tone::A2 );
 		// lead_r.rate( lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, lead_rate.size() ) ] / Tone::A2 );
 
-		lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] / Tone::C3, 0.0005f ) );
-		lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] / Tone::C3, 0.0005f ) );
+		lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] / Tone::C3, chase_speed_l ) );
+		lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] / Tone::C3, chase_speed_r ) );
 	}
 
 	int get_page_index() const
@@ -375,13 +391,15 @@ public:
 			
 		s +=   kick() *   kick_volume_of_page[ get_page_index() ] * kick_env();
 		s +=  snare() *  snare_volume_of_page[ get_page_index() ] * snare_env();
-		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value();
+		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value(); // * ( step % 4 / 2 );
 			
 		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * ( leap.lh_is_valid() ? 1.f : 0.5f );
 		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * ( leap.rh_is_valid() ? 1.f : 0.5f );
 
 		s += tap() * key_tap_volume_of_page[ get_page_index() ];
-			
+		
+		s += ( pad1() + pad2() + pad3() ) / 3.f * 0.5f;
+
 		s += page_down() + page_up();
 		s /= static_cast< float >( Part::MAX );
 
@@ -545,8 +563,21 @@ public:
 			bass_volume.fit( 1.f );
 		}
 
-		const std::array< float, 4 > bass_rate = { Tone::C3, Tone::E3, Tone::F3, Tone::G3 }; // { Tone::F2, Tone::G2, Tone::A2, Tone::C3 };
+		// const std::array< float, 4 > bass_rate = { Tone::C3, Tone::E3, Tone::F3, Tone::G3 };
+		const std::array< float, 4 > bass_rate = { Tone::F1, Tone::G1, Tone::A1, Tone::C2 };
 		bass.rate( bass_rate[ p_step ] / Tone::C3 );
+
+		// const std::array< float, 4 > pad_1_tones = { Tone::C4, Tone::C4, Tone::A3, Tone::B3 };
+		// const std::array< float, 4 > pad_2_tones = { Tone::G3, Tone::G3, Tone::F3, Tone::G3 };
+		// const std::array< float, 4 > pad_3_tones = { Tone::E3, Tone::E3, Tone::C3, Tone::D3 };
+
+		const std::array< float, 4 > pad_1_tones = { Tone::C4, Tone::D4, Tone::E4, Tone::D4 };
+		const std::array< float, 4 > pad_2_tones = { Tone::A3, Tone::A3, Tone::C4, Tone::B3 };
+		const std::array< float, 4 > pad_3_tones = { Tone::G3, Tone::F3, Tone::G3, Tone::G3 };
+
+		pad1.rate( pad_1_tones[ p_step ] / Tone::C3 );
+		pad2.rate( pad_2_tones[ p_step ] / Tone::C3 );
+		pad3.rate( pad_3_tones[ p_step ] / Tone::C3 );
 
 		if ( page == Page::BASS )
 		{
