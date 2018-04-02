@@ -86,6 +86,8 @@ public:
 	static const float A6;
 
 	static const float C7;
+
+	static const float __;
 };
 
 const float Tone::F1 = 43.654f;
@@ -127,6 +129,8 @@ const float Tone::E6 = 1318.510f;
 const float Tone::G6 = 1567.982f;
 const float Tone::A6 = 1760.000f;
 const float Tone::C7 = 2093.005f;
+
+const float Tone::__ = 0.f;
 
 
 
@@ -174,17 +178,21 @@ public:
 	ADSR<> kick_env, snare_env;
 
 	SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r, pad1, pad2, pad3;
+	SamplePlayer<> bright;
 
+	Biquad<> bq_filter;
 	Delay<> delay;
 
 	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.05f );
 	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
 	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
 
+
+
 	unsigned int rec = 0;
 	gam::Array<float> rec_buf;
+
 	int rec_frame_index = 0;
-	int rec_frame_play_index = 0;
 
 	MyApp( int in, int out )
 		: AudioApp( in, out )
@@ -212,6 +220,8 @@ public:
 
 		delay.maxDelay( 1.5f );
 		delay.delay( 60.f / get_bpm() / 2.f );
+
+		bq_filter.type( gam::HIGH_PASS );
 
 		// audioIO().gain( 0.f );
 
@@ -280,9 +290,10 @@ public:
 			pad1.buffer( bass );
 			pad2.buffer( bass );
 			pad3.buffer( bass );
-			
+
 			kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
 			snare.buffer( kick );
+			bright.buffer( kick );
 		}
 
 		// std::cout << rec << std::endl;
@@ -393,15 +404,19 @@ public:
 		s +=  snare() *  snare_volume_of_page[ get_page_index() ] * snare_env();
 		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value(); // * ( step % 4 / 2 );
 			
-		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * ( leap.lh_is_valid() ? 1.f : 0.5f );
-		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * ( leap.rh_is_valid() ? 1.f : 0.5f );
+		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * ( leap.lh_is_valid() ? 1.f : 0.2f );
+		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * ( leap.rh_is_valid() ? 1.f : 0.2f );
 
 		s += tap() * key_tap_volume_of_page[ get_page_index() ];
 		
 		s += ( pad1() + pad2() + pad3() ) / 3.f * 0.5f;
+		s += bright();
 
 		s += page_down() + page_up();
 		s /= static_cast< float >( Part::MAX );
+
+		bq_filter.freq( leap.y_pos_to_rate( leap.rh_pos().y ) * 1000.f );
+		// s = bq_filter( s );
 
 		s = compress( s );
 		
@@ -507,6 +522,13 @@ public:
 			}
 		};
 
+		const float bright_phrase[ 16 ] = {
+			Tone::__, Tone::__, Tone::G5, Tone::__,
+			Tone::C6, Tone::__, Tone::C5, Tone::G5,
+			Tone::__, Tone::C6, Tone::__, Tone::C6,
+			Tone::G5, Tone::__, Tone::C6, Tone::__,
+		};
+
 		const float hh_on[ 16 ] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 		const int is_fill_in = p_step < 3 ? 0 : 1;
@@ -532,12 +554,17 @@ public:
 			snare_env.reset();
 		}
 
+		if ( bright_phrase[ step ] != Tone::__ )
+		{
+			bright.rate( bright_phrase[ step ] / Tone::C3 );
+			bright.reset();
+		}
+
 		if ( step == 0 )
 		{
 			p_step = ( p_step + 1 ) % 4;
 				
 			// bass.reset();
-			rec_frame_play_index = 0;
 			// bass_volume.fit_to_target();
 		}
 

@@ -161,12 +161,17 @@ public:
 		return rate;
 	}
 
-	const int y_pos_to_index( float y, int size ) const
+	float y_pos_to_rate( float y ) const
 	{
 		const float max_y = 1000.f;
 		const float min_y = 100.f;
 
-		int index = static_cast< int >( ( y - min_y ) / ( max_y - min_y ) * size );
+		return std::clamp( ( y - min_y ) / ( max_y - min_y ), 0.f, 1.f );
+	}
+
+	const int y_pos_to_index( float y, int size ) const
+	{
+		int index = static_cast< int >( y_pos_to_rate( y ) * size );
 
 		if ( index < 0 )
 		{
