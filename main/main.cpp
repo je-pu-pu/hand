@@ -179,7 +179,7 @@ public:
 	Accum<> timer;
 
 	SamplePlayer<> tap, page_down, page_up, kick, snare;
-	ADSR<> kick_env, snare_env;
+	ADSR<> tap_env, kick_env, snare_env;
 
 	SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r, pad1, pad2, pad3;
 	ADSR<> bass_env;
@@ -191,8 +191,8 @@ public:
 	Delay<> delay;
 
 	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.05f );
-	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
-	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.1f );
+	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
+	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 
 
 
@@ -203,8 +203,6 @@ public:
 
 	MyApp( int in, int out )
 		: AudioApp( in, out )
-		, kick_env()
-		, snare_env()
 	{
 		timer.period( 60.f / get_bpm() / 4.f );
 		timer.phaseMax();
@@ -230,10 +228,29 @@ public:
 
 		bq_filter.type( gam::HIGH_PASS );
 
-		// audioIO().gain( 0.f );
+		kick_env.attack( 0.001f );
+		kick_env.sustain( 0.5f );
+
+		snare_env.attack( 0.001f );
+		snare_env.sustain( 0.5f );
 
 		leap.set_r_slider( 2, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 		leap.set_r_slider( 3, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+	}
+
+	bool is_recording() const
+	{
+		return rec & 0b1;
+	}
+
+	bool is_record_started() const
+	{
+		return ( !( rec & 0x10 ) ) && ( rec & 0b1 );
+	}
+
+	bool is_record_finished() const
+	{
+		return ( rec & 0b10 ) && !( rec & 0b1 );
 	}
 
 	static float range_to_rate( float value, float min, float max )
@@ -279,12 +296,12 @@ public:
 		rec <<= 1;
 		rec |= static_cast< bool >( GetAsyncKeyState( 'R' ) & 0b1000000000000000 );
 
-		if ( ( rec & 0x10 ) == 0 && rec & 0b1 )
+		if ( is_record_started() )
 		{
 			rec_frame_index = 0;
 			rec_buf.resize( get_frames_per_beat() * 4, 0 );
 		}
-		else if ( ( rec & 0b10 ) && ( rec & 0b1 ) == 0 )
+		else if ( is_record_finished() )
 		{
 			rec_buf.resize( std::max( rec_frame_index, 64 ) );
 			smoothing( rec_buf );
@@ -301,6 +318,7 @@ public:
 			kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
 			snare.buffer( kick );
 			bright.buffer( kick );
+			tap.buffer( kick );
 		}
 
 		// std::cout << rec << std::endl;
@@ -308,39 +326,43 @@ public:
 
 	void smoothing( gam::Array<float>& buf )
 	{
-		return;
-
-		const float range = 2;
-
-		for ( int n = 0; n < buf.size(); n++ )
+		if ( false )
 		{
-			float v = 0.f;
+			const float range = 4;
 
-			for ( int m = 0; m < range; m++ )
+			for ( int n = 0; n < buf.size(); n++ )
 			{
-				v += buf[ ( n + m ) % buf.size() ];
+				float v = 0.f;
+
+				for ( int m = 0; m < range; m++ )
+				{
+					v += buf[ ( n + m ) % buf.size() ];
+				}
+
+				buf[ n ] = v / range;
 			}
-
-			buf[ n ] = v / range;
 		}
 
-		/*
-		for ( int n = 0; n < buf.size() / 2; n++ )
+		if ( false )
 		{
-			int m = buf.size() / 2 + n;
-			float r = static_cast< float >( n ) / ( buf.size() / 2 );
-			float a = buf[ n ];
-			float b = buf[ m ];
+			for ( int n = 0; n < buf.size() / 2; n++ )
+			{
+				int m = buf.size() / 2 + n;
+				float r = static_cast< float >( n ) / ( buf.size() / 2 );
+				float a = buf[ n ];
+				float b = buf[ m ];
 
-			buf[ n ] = ( a * ( 1.f - r ) ) + ( b * r );
-			buf[ m ] = ( a * r ) + ( b * ( 1.f - r ) );
+				buf[ n ] = ( a * ( 1.f - r ) ) + ( b * r );
+				buf[ m ] = ( a * r ) + ( b * ( 1.f - r ) );
+			}
 		}
-		*/
 	}
 
 	void onAudio( AudioIOData& io )
 	{
-		if ( rec & 0b1 )
+		key_input();
+
+		if ( is_recording() )
 		{
 			for ( int n = 0; n < io.framesPerBuffer(); n++ )
 			{
@@ -358,11 +380,6 @@ public:
 
 			update_lead();
 
-			if ( rec & 0b1 )
-			{
-				continue;
-			}
-
 			mix( io );
 		}
 	}
@@ -378,14 +395,20 @@ public:
 		const auto& tones_l = tones_pentatonic_low; // lead_rate_diatonic_low;
 		const auto& tones_r = tones_pentatonic_high; // lead_rate_diatonic_high;
 		
-		const float chase_speed_l = 1.f; // 0.0001f;
-		const float chase_speed_r = 1.f; // 0.0005f;
+		const float chase_speed_l = page < Page::FREE ? 0.0001f : 1.f;
+		const float chase_speed_r = page < Page::FREE ? 0.0005f : 1.f;
 
 		// lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, lead_rate.size() ) ] / Tone::A2 );
 		// lead_r.rate( lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, lead_rate.size() ) ] / Tone::A2 );
 
 		lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] / Tone::C3, chase_speed_l ) );
 		lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] / Tone::C3, chase_speed_r ) );
+
+		lead_l_volume.target_value() = get_part_volume( Part::LEAD_L ) * leap.lh_is_valid() ? 1.f : 0.f;
+		lead_r_volume.target_value() = get_part_volume( Part::LEAD_R ) * leap.rh_is_valid() ? 1.f : 0.f;
+
+		lead_l_volume.chase();
+		lead_r_volume.chase();
 	}
 
 	int get_page_index() const
@@ -393,29 +416,35 @@ public:
 		return static_cast< int >( page );
 	}
 
+	float get_part_volume( Part part ) const
+	{
+		static const float volume_table[ static_cast< int >( Part::MAX ) ][ PAGES ] = {
+		//	{ TAP, BASS, KICK,SNARE, DEMO,    R,   L, FREE,  MAX, FIN }
+			{ 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 2.f }, // KICK
+			{ 0.f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 1.f }, // SNARE
+			{ 0.f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 0.f }, // BASS
+			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 1.f, 0.f }, // LEAD_L
+			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 1.f, 0.f }, // LEAD_R
+			{ 1.f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.f, 1.f }, // TAP
+		};
+
+		return volume_table[ static_cast< int >( part ) ][ get_page_index() ];
+	}
+
 	void mix( AudioIOData& io )
 	{
-		//                                                        { TAP, BASS, KICK,SNARE, DEMO,    R,   L, FREE, MAX, FIN }
-		const std::array< float, PAGES >    kick_volume_of_page = { 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 2.f };
-		const std::array< float, PAGES >   snare_volume_of_page = { 0.f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 1.f };
-		const std::array< float, PAGES >    bass_volume_of_page = { 0.f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 0.f };
-		const std::array< float, PAGES >  lead_l_volume_of_page = { 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 1.f, 0.f };
-		const std::array< float, PAGES >  lead_r_volume_of_page = { 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 1.f, 0.f };
-		const std::array< float, PAGES > key_tap_volume_of_page = { 1.f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.f, 1.f };
-
+		//                                                { TAP,    BASS,  KICK, SNARE,  DEMO,    R,      L,  FREE,   MAX, FIN }
 		const std::array< float, PAGES >     delay_gain = { 0.25f, 0.10f, 0.10f, 0.10f, 0.10f, 0.20f, 0.20f, 0.20f, 0.30f, 0.50f };
 		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.25f };
 
 		float s = 0.f;
 			
-		s +=   kick() *   kick_volume_of_page[ get_page_index() ] * kick_env();
-		s +=  snare() *  snare_volume_of_page[ get_page_index() ] * snare_env();
-		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value() * bass_env(); // * ( step % 4 / 2 );
-			
-		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * ( leap.lh_is_valid() ? 1.f : 0.2f );
-		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * ( leap.rh_is_valid() ? 1.f : 0.2f );
-
-		s += tap() * key_tap_volume_of_page[ get_page_index() ];
+		s +=   kick() * get_part_volume( Part::KICK   ) *  kick_env();
+		s +=  snare() * get_part_volume( Part::SNARE  ) * snare_env();
+		s +=   bass() * get_part_volume( Part::BASS   ) * bass_volume.value() * bass_env(); // * ( step % 4 / 2 );
+		s += lead_l() * get_part_volume( Part::LEAD_L ) * lead_l_volume.value();
+		s += lead_r() * get_part_volume( Part::LEAD_R ) * lead_r_volume.value();
+		s +=    tap() * get_part_volume( Part::TAP    ) * tap_env();
 		
 		s += ( pad1() + pad2() + pad3() ) / 3.f * 0.5f;
 		s += bright() * bright_env();
@@ -431,18 +460,23 @@ public:
 		s += delay( s * delay_gain[ get_page_index() ] + delay() * delay_feedbak[ get_page_index() ] );
 		s = compress( s );
 
+		if ( is_recording() )
+		{
+			s *= 0.2f;
+		}
+
 		io.out( 0 ) = s;
 		io.out( 1 ) = s;
 	}
 
 	float compress( float level )
 	{
-		static float max_level = 1.f;
+		float compressor_max_level = 1.f;
 
-		max_level = math::chase( max_level, 1.f, 0.0001f );
-		max_level = std::max( std::abs( level ), max_level );
+		compressor_max_level = math::chase( compressor_max_level, 1.f, 0.0001f );
+		compressor_max_level = std::max( std::abs( level ), compressor_max_level );
 
-		level /= ( max_level + 0.01f );
+		level /= ( compressor_max_level + 0.01f );
 
 		/*
 		if ( max_level > 1.f )
@@ -458,7 +492,7 @@ public:
 		}
 		*/
 
-		max_level = std::min( max_level, 10.f );
+		compressor_max_level = std::min( compressor_max_level, 10.f );
 
 		return level;
 	}
@@ -469,8 +503,6 @@ public:
 	 */
 	void on_note( AudioIOData& io )
 	{
-		key_input();
-
 		if ( leap.pop_page_decremented() )
 		{
 			page_down.reset();
@@ -496,79 +528,12 @@ public:
 			const auto tapped_y = l_tapped ? leap.lh_pos().y : leap.rh_pos().y;
 			const int tap_index = leap.y_pos_to_index( tapped_y, tap_note.size() - random_note_range ) + rand() % random_note_range;
 			
-			tap.rate( tap_note[ tap_index ] / Tone::A3 );
+			tap.rate( tap_note[ tap_index ] / Tone::C4 );
 			tap.reset();
+			tap_env.reset();
 		}
-
-		const bool kick_on[ 3 ][ 2 ][ 16 ] = {
-			{
-				{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 },
-				{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
-			},
-			{
-				{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0 },
-				{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1 },
-			},
-			{
-				{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1 },
-				{ 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 },
-			}
-		};
-
-		const bool snare_on[ 3 ][ 2 ][ 16 ] = {
-			{
-				{ 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
-				{ 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1 }
-			},
-			{
-				{ 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0 },
-				{ 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1 }
-			},
-			{
-				{ 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1 },
-				{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
-			}
-		};
-
-		const float bright_phrase[ 16 ] = {
-			Tone::__, Tone::__, Tone::G5, Tone::__,
-			Tone::C6, Tone::__, Tone::C5, Tone::G5,
-			Tone::__, Tone::C6, Tone::__, Tone::C6,
-			Tone::G5, Tone::__, Tone::C6, Tone::__,
-		};
-
-		const float hh_on[ 16 ] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-
-		const int is_fill_in = p_step < 3 ? 0 : 1;
-
-		const int  kick_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
-		const int snare_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
 
 		step = ( step + 1 ) % 16;
-
-		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
-		{
-			kick.range( std::min( 0.9f, leap.l_slider( 2 ) ), 0.15f );
-			kick.rate( rate_to_range( leap.r_slider( 2 ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
-			kick.reset();
-			kick_env.reset();
-		}
-
-		if ( snare_on[ snare_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
-		{
-			snare.range( std::min( 0.9f, leap.l_slider( 3 ) ), 0.15f );
-			snare.rate( rate_to_range( leap.r_slider( 3 ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
-			snare.reset();
-			snare_env.reset();
-		}
-
-		if ( bright_phrase[ step ] != Tone::__ )
-		{
-			bright.rate( bright_phrase[ step ] / Tone::C3 );
-			bright.reset();
-			bright_env.sustain( 0.01f );
-			bright_env.reset();
-		}
 
 		if ( step == 0 )
 		{
@@ -595,10 +560,7 @@ public:
 			}
 		}
 
-		if ( get_page_index() > 1 )
-		{
-			bass_volume.fit( 1.f );
-		}
+		update_sequencer();
 
 		// const std::array< float, 4 > bass_rate = { Tone::C3, Tone::E3, Tone::F3, Tone::G3 };
 		const std::array< float, 4 > bass_rate = { Tone::F1, Tone::G1, Tone::A1, Tone::C2 };
@@ -643,20 +605,6 @@ public:
 			bass.rate( bass_rate[ bass_note_index ] / 110.f );
 			*/
 		}
-		else if ( page == Page::LEAD_R )
-		{
-			if ( leap.rh_pos().z < -30.f )
-			{
-				lead_r_volume.target_value() = 1.f;
-			}
-		}
-		else if ( page == Page::LEAD_L )
-		{
-			if ( leap.lh_pos().z < -30.f )
-			{
-				lead_l_volume.target_value() = 1.f;
-			}
-		}
 		else if ( page == Page::FREE )
 		{
 			if ( step / 2 % 2 == 1 )
@@ -682,9 +630,81 @@ public:
 			kick.range( 0.f, 10.f );
 			kick.reset();
 		}
+	}
 
-		lead_l_volume.chase();
-		lead_r_volume.chase();
+	void update_sequencer()
+	{
+		const bool kick_on[ 3 ][ 2 ][ 16 ] = {
+			{
+				{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 },
+				{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
+			},
+			{
+				{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0 },
+				{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1 },
+			},
+			{
+				{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0 },
+				{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+			}
+		};
+
+		const bool snare_on[ 3 ][ 2 ][ 16 ] = {
+			{
+				{ 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
+				{ 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1 }
+			},
+			{
+				{ 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0 },
+				{ 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1 }
+			},
+			{
+				{ 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0 },
+				{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+			}
+		};
+
+		const float bright_phrase[ 2 ][ 2 ][ 16 ] = {
+			{
+				{ Tone::C5, Tone::__, Tone::G5, Tone::__,  Tone::C6, Tone::__, Tone::C5, Tone::G5,  Tone::__, Tone::C6, Tone::__, Tone::C6,  Tone::G5, Tone::__, Tone::C6, Tone::__, },
+				{ Tone::C5, Tone::__, Tone::G5, Tone::__,  Tone::C6, Tone::__, Tone::C5, Tone::G5,  Tone::__, Tone::C6, Tone::__, Tone::C6,  Tone::G5, Tone::__, Tone::C6, Tone::__, },
+			},
+			{
+				{ Tone::A5, Tone::__, Tone::G5, Tone::__,  Tone::E5, Tone::__, Tone::D5, Tone::C5,  Tone::__, Tone::D5, Tone::__, Tone::E5,  Tone::D5, Tone::__, Tone::C5, Tone::__, },
+				{ Tone::A5, Tone::__, Tone::G5, Tone::__,  Tone::E5, Tone::__, Tone::D5, Tone::C5,  Tone::__, Tone::D5, Tone::__, Tone::G5,  Tone::D5, Tone::__, Tone::C5, Tone::__, },
+			},
+		};
+
+		const int is_fill_in = p_step < 3 ? 0 : 1;
+
+		const std::array< int, PAGES > kick_pattern  = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
+		const std::array< int, PAGES > snare_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
+
+		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
+		{
+			kick.range( std::min( 0.9f, leap.l_slider( 2 ) ), 0.15f );
+			kick.rate( rate_to_range( leap.r_slider( 2 ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+			kick.reset();
+			kick_env.reset();
+		}
+
+		if ( snare_on[ snare_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
+		{
+			snare.range( std::min( 0.9f, leap.l_slider( 3 ) ), 0.15f );
+			snare.rate( rate_to_range( leap.r_slider( 3 ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+			snare.reset();
+			snare_env.reset();
+		}
+
+		const float bright_tone = bright_phrase[ get_page_index() % 2 ][ is_fill_in ][ step ];
+
+		if ( bright_tone  != Tone::__ )
+		{
+			bright.rate( bright_tone / Tone::C3 );
+			bright.reset();
+			bright_env.sustain( 0.01f );
+			bright_env.reset();
+		}
 	}
 
 	std::string get_page_name( Page page ) const
@@ -715,20 +735,9 @@ public:
 			bass_volume.target_value() = 0.f;
 			// std::cout << "pc : " << bass_volume.target_value() << std::endl;
 		}
-
-		if ( page == Page::LEAD_R )
+		else if ( page > Page::BASS )
 		{
-			lead_r_volume.target_value() = 0.2f;
-		}
-		else if ( page == Page::LEAD_L )
-		{
-			lead_r_volume.target_value() = 1.f;
-			lead_l_volume.target_value() = 0.2f;
-		}
-		else if ( page == Page::FREE )
-		{
-			lead_l_volume.target_value() = 1.f;
-			lead_r_volume.target_value() = 1.f;
+			bass_volume.fit( 1.f );
 		}
 
 		if ( incremented )

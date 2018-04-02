@@ -1,4 +1,5 @@
 #include <iostream>
+#include <array>
 #include <algorithm>
 #include <cstring>
 #include <chrono>
@@ -17,8 +18,8 @@ private:
 	// この時間までスワイプジェスチャーを停止する
 	std::chrono::system_clock::time_point swipe_stop_until_ = std::chrono::system_clock::now();
 
-	float l_slider_[ PAGES ];
-	float r_slider_[ PAGES ];
+	std::array< float, PAGES > l_slider_;
+	std::array< float, PAGES > r_slider_;
 
 	bool l_tapped_ = false;
 	bool r_tapped_ = false;
