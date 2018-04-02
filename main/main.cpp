@@ -46,6 +46,8 @@ LeapSoundController leap;
 class Tone
 {
 public:
+	static const float D1;
+	static const float E1;
 	static const float F1;
 	static const float G1;
 	static const float A1;
@@ -90,6 +92,8 @@ public:
 	static const float __;
 };
 
+const float Tone::D1 = 36.708f;
+const float Tone::E1 = 41.203f;
 const float Tone::F1 = 43.654f;
 const float Tone::G1 = 48.999f;
 const float Tone::A1 = 55.000f;
@@ -178,7 +182,10 @@ public:
 	ADSR<> kick_env, snare_env;
 
 	SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r, pad1, pad2, pad3;
+	ADSR<> bass_env;
+	
 	SamplePlayer<> bright;
+	ADSR<> bright_env;
 
 	Biquad<> bq_filter;
 	Delay<> delay;
@@ -388,12 +395,13 @@ public:
 
 	void mix( AudioIOData& io )
 	{
-		const std::array< float, PAGES >    kick_volume_of_page = { 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 1.f, 2.f };
-		const std::array< float, PAGES >   snare_volume_of_page = { 0.f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 1.f, 1.f };
-		const std::array< float, PAGES >    bass_volume_of_page = { 0.f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.f, 1.f, 0.f };
-		const std::array< float, PAGES >  lead_l_volume_of_page = { 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.f, 1.f, 0.f };
-		const std::array< float, PAGES >  lead_r_volume_of_page = { 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.f, 1.f, 0.f };
-		const std::array< float, PAGES > key_tap_volume_of_page = { 1.f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.f, 1.f, 1.f };
+		//                                                        { TAP, BASS, KICK,SNARE, DEMO,    R,   L, FREE, MAX, FIN }
+		const std::array< float, PAGES >    kick_volume_of_page = { 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 2.f };
+		const std::array< float, PAGES >   snare_volume_of_page = { 0.f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 1.f };
+		const std::array< float, PAGES >    bass_volume_of_page = { 0.f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 0.f };
+		const std::array< float, PAGES >  lead_l_volume_of_page = { 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 1.f, 0.f };
+		const std::array< float, PAGES >  lead_r_volume_of_page = { 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 1.f, 0.f };
+		const std::array< float, PAGES > key_tap_volume_of_page = { 1.f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.f, 1.f };
 
 		const std::array< float, PAGES >     delay_gain = { 0.25f, 0.10f, 0.10f, 0.10f, 0.10f, 0.20f, 0.20f, 0.20f, 0.30f, 0.50f };
 		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.25f };
@@ -402,7 +410,7 @@ public:
 			
 		s +=   kick() *   kick_volume_of_page[ get_page_index() ] * kick_env();
 		s +=  snare() *  snare_volume_of_page[ get_page_index() ] * snare_env();
-		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value(); // * ( step % 4 / 2 );
+		s +=   bass() *   bass_volume_of_page[ get_page_index() ] * bass_volume.value() * bass_env(); // * ( step % 4 / 2 );
 			
 		s += lead_l() * lead_l_volume_of_page[ get_page_index() ] * lead_l_volume.value() * ( leap.lh_is_valid() ? 1.f : 0.2f );
 		s += lead_r() * lead_r_volume_of_page[ get_page_index() ] * lead_r_volume.value() * ( leap.rh_is_valid() ? 1.f : 0.2f );
@@ -410,7 +418,7 @@ public:
 		s += tap() * key_tap_volume_of_page[ get_page_index() ];
 		
 		s += ( pad1() + pad2() + pad3() ) / 3.f * 0.5f;
-		s += bright();
+		s += bright() * bright_env();
 
 		s += page_down() + page_up();
 		s /= static_cast< float >( Part::MAX );
@@ -533,7 +541,7 @@ public:
 
 		const int is_fill_in = p_step < 3 ? 0 : 1;
 
-		const int  kick_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 0, 1, 0, 0, 1, 2, 0 };
+		const int  kick_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
 		const int snare_pattern[ LeapSoundController::PAGES ] = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
 
 		step = ( step + 1 ) % 16;
@@ -558,14 +566,16 @@ public:
 		{
 			bright.rate( bright_phrase[ step ] / Tone::C3 );
 			bright.reset();
+			bright_env.sustain( 0.01f );
+			bright_env.reset();
 		}
 
 		if ( step == 0 )
 		{
 			p_step = ( p_step + 1 ) % 4;
-				
-			// bass.reset();
-			// bass_volume.fit_to_target();
+
+			bass.reset();
+			bass_env.reset();
 		}
 
 		// 1 小節目の 4 拍のみページを行う
