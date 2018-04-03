@@ -20,6 +20,8 @@ frequencies (f1+f2)/2 and (f1-f2)/2.
 #include <Gamma/Envelope.h>
 #include <Gamma/SamplePlayer.h>
 #include <Gamma/Effects.h>
+#include <Gamma/FFT.h>
+#include <Gamma/DFT.h>
 
 #include <boost/asio.hpp>
 
@@ -190,11 +192,9 @@ public:
 	Biquad<> bq_filter;
 	Delay<> delay;
 
-	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.05f );
+	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
-
-
 
 	unsigned int rec = 0;
 	gam::Array<float> rec_buf;
@@ -304,7 +304,12 @@ public:
 		else if ( is_record_finished() )
 		{
 			rec_buf.resize( std::max( rec_frame_index, 64 ) );
+			
+			// analysis( rec_buf );
+			// print_edge( rec_buf );
+
 			smoothing( rec_buf );
+			// print_edge( rec_buf );
 
 			gam::arr::normalize( & rec_buf[ 0 ], rec_buf.size() );
 			
@@ -328,7 +333,7 @@ public:
 	{
 		if ( false )
 		{
-			const float range = 4;
+			const float range = 16;
 
 			for ( int n = 0; n < buf.size(); n++ )
 			{
@@ -343,18 +348,91 @@ public:
 			}
 		}
 
-		if ( false )
+		if ( true )
 		{
 			for ( int n = 0; n < buf.size() / 2; n++ )
 			{
 				int m = buf.size() / 2 + n;
+
 				float r = static_cast< float >( n ) / ( buf.size() / 2 );
 				float a = buf[ n ];
 				float b = buf[ m ];
 
-				buf[ n ] = ( a * ( 1.f - r ) ) + ( b * r );
+				buf[ n ] = ( a * r ) + ( b * ( 1.f - r ) );
 				buf[ m ] = ( a * r ) + ( b * ( 1.f - r ) );
 			}
+		}
+	}
+
+	void sine( gam::Array<float>& buf, float tone )
+	{
+		gam::Sine<> s;
+		s.freq( tone );
+
+		buf.resize( audioIO().framesPerSecond() );
+
+		for ( int n = 0; n < buf.size(); n++ )
+		{
+			buf[ n ] = s();
+		}
+	}
+
+	void analysis( gam::Array<float>& buf )
+	{
+		gam::RFFT<float> rfft( buf.size() );
+		
+		rfft.forward( &buf[ 0 ] );
+
+		// std::cout << std::endl;
+
+		float max = 0.f;
+		float freq = 0.f;
+
+		for ( int n = 1; n < buf.size(); n += 2 )
+		{
+			const float f = static_cast< float >( n ) * static_cast< float >( audioIO().framesPerSecond() ) / buf.size();
+
+			if ( max < buf[ n ] )
+			{
+				max = buf[ n ];
+				freq = f;
+			}
+
+			if ( f >= 200 && f <= 500 )
+			{
+				std::cout << "f : " << f << " : " << buf[ n ] << std::endl;
+			}
+
+			// std::cout << buf[ n ] << "," << buf[ n + 1 ] << std::endl;
+		}
+
+		std::cout << "freq: " << freq << std::endl;
+
+		rfft.inverse( &buf[ 0 ] );
+
+		/*
+		gam::STFT stft;
+
+		if ( stft( buf[ 0 ] ) )
+		{
+			for ( int n = 0; n < stft.numBins(); n++ )
+			{
+				stft.bin( n );
+			}
+		}
+
+		std::cout << "num bins: " << stft.numBins() << std::endl;
+		std::cout << "bin freq: " << stft.binFreq() << std::endl;
+		*/
+	}
+
+	void print_edge( gam::Array<float>& buf ) const
+	{
+		std::cout << "edge :" << std::endl;
+
+		for ( int n = -5; n <= 5; n++ )
+		{
+			std::cout << n << ": " << buf[ ( buf.size() + n ) % buf.size() ] << std::endl;
 		}
 	}
 
@@ -378,9 +456,24 @@ public:
 				on_note( io );
 			}
 
+			update_bass();
 			update_lead();
 
 			mix( io );
+		}
+	}
+
+	void update_bass()
+	{
+		if ( page == Page::BASS )
+		{
+			// ベースのボリュームが左右の手の距離によって変わる
+			if ( leap.hand_count() == 2 )
+			{
+				bass_volume.target_value() = std::clamp( leap.lh_pos().distanceTo( leap.rh_pos() ) / 1000.f, 0.f, 1.f);
+			}
+
+			bass_volume.chase();
 		}
 	}
 
@@ -539,7 +632,6 @@ public:
 		{
 			p_step = ( p_step + 1 ) % 4;
 
-			bass.reset();
 			bass_env.reset();
 		}
 
@@ -578,34 +670,7 @@ public:
 		pad2.rate( pad_2_tones[ p_step ] / Tone::C3 );
 		pad3.rate( pad_3_tones[ p_step ] / Tone::C3 );
 
-		if ( page == Page::BASS )
-		{
-			// ベースのボリュームが左右の手の距離によって変わる
-			if ( leap.hand_count() == 2 )
-			{
-				bass_volume.target_value() = leap.lh_pos().distanceTo( leap.rh_pos() ) / 1000.f;
-				bass_volume.target_value() = std::max( bass_volume.target_value(), 0.f );
-				bass_volume.target_value() = std::min( bass_volume.target_value(), 1.f );
-			}
-
-			bass_volume.chase();
-
-			// std::cout << "bass volume : " << bass_volume.value() << ", " << bass_volume.target_value() << std::endl;
-
-			// ベースの
-			/*
-			float hands_pos = ( leap.lh_pos().y + leap.rh_pos().y ) / 2.f / 1000.f;
-			hands_pos = std::max( hands_pos, 0.f );
-			hands_pos = std::min( hands_pos, 1.f );
-
-			int bass_note_index = static_cast< int >( hands_pos * 4.f );
-			bass_note_index = std::max( bass_note_index, 0 );
-			bass_note_index = std::min( bass_note_index, 3 );
-
-			bass.rate( bass_rate[ bass_note_index ] / 110.f );
-			*/
-		}
-		else if ( page == Page::FREE )
+		if ( page == Page::FREE )
 		{
 			if ( step / 2 % 2 == 1 )
 			{
