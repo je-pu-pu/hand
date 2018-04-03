@@ -1,16 +1,3 @@
-/*	Gamma - Generic processing library
-See COPYRIGHT file for authors and license information
-
-Example:	Beating
-Author:		Lance Putnam, 2012
-
-Description:
-This demonstrates the beating effect produced by summing two sinusoids with 
-equal amplitude and nearly equal frequency. The sum of two sinusoids with 
-frequencies f1 and f2 is equivalent to the product of two sinusoids with 
-frequencies (f1+f2)/2 and (f1-f2)/2.
-*/
-
 #include "LeapSoundController.h"
 #include "Config.h"
 #include "chase_value.h"
@@ -146,6 +133,7 @@ public:
 	static const int PAGES = LeapSoundController::PAGES;
 	const float RHYTHM_RATE_MIN = 0.5f;
 	const float RHYTHM_RATE_MAX = 2.f;
+	const float area_threashold_z = 100.f;
 
 	enum class Page
 	{
@@ -173,8 +161,10 @@ public:
 	int get_bpm() const { return 120; }
 
 	Page page = Page::TAP;
-	int step = 0;		// 16 分音符の step 0 .. 15
-	int p_step = 0;		// 1 小節の step 0 .. 3
+	
+	int step = 0;		// 16 分音符のカウント ( 0 .. 15 )
+	int beat = 0;		//  4 分音符のカウント ( 0 ..  3 )
+	int bar = 0;		//  1 小節のカウント   ( 0 ..  3 )
 
 	bool finished = false;
 
@@ -200,6 +190,15 @@ public:
 	gam::Array<float> rec_buf;
 
 	int rec_frame_index = 0;
+
+	bool is_on_step_;					/// たった今 16 分音符の頭
+// 	bool is_on_beat_;					/// たった今  4 分音符の頭
+// 	bool is_on_bar_;					/// たった今小節の頭
+
+protected:
+	bool is_on_step() const { return is_on_step_; }
+
+public:
 
 	MyApp( int in, int out )
 		: AudioApp( in, out )
@@ -260,7 +259,17 @@ public:
 
 	static float rate_to_range( float value, float min, float max )
 	{
-		return ( max - min ) * value + min;
+		if ( min > max )
+		{
+			return std::clamp( ( max - min ) * value + min, max, min );
+		}
+
+		return std::clamp( ( max - min ) * value + min, min, max );
+	}
+
+	static float range_to_range( float value, float min, float max, float new_min, float new_max )
+	{
+		return rate_to_range( range_to_rate( value, min, max ), new_min, new_max );
 	}
 
 	void key_input()
@@ -451,6 +460,10 @@ public:
 
 		while ( io() )
 		{
+			is_on_step_ = false;
+			// is_on_beat_ = false;
+			// is_on_bar_  = false;
+
 			if ( timer() && ( !finished || leap.is_page_decremented() ) )
 			{
 				on_note( io );
@@ -488,17 +501,28 @@ public:
 		const auto& tones_l = tones_pentatonic_low; // lead_rate_diatonic_low;
 		const auto& tones_r = tones_pentatonic_high; // lead_rate_diatonic_high;
 		
-		const float chase_speed_l = page < Page::FREE ? 0.0001f : 1.f;
-		const float chase_speed_r = page < Page::FREE ? 0.0005f : 1.f;
+		const bool is_ll = range_to_rate( leap.x_pos_to_rate( leap.lh_pos().x ), 0.10f, 0.25f ) < 0.5f; // 左手が左エリアの左側にある
+		const bool is_rr = range_to_rate( leap.x_pos_to_rate( leap.rh_pos().x ), 0.75f, 0.90f ) > 0.5f; // 右手が右エリアの右側にある
 
-		// lead_l.rate( lead_rate[ leap.y_pos_to_index( leap.lh_pos().y, lead_rate.size() ) ] / Tone::A2 );
-		// lead_r.rate( lead_rate[ leap.y_pos_to_index( leap.rh_pos().y, lead_rate.size() ) ] / Tone::A2 );
+		const bool is_portamento_l = page < Page::CLIMAX || is_ll;
+		const bool is_portamento_r = page < Page::CLIMAX || is_rr;
 
-		lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] / Tone::C3, chase_speed_l ) );
-		lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] / Tone::C3, chase_speed_r ) );
+		const float chase_speed_l = is_portamento_l ? 0.0001f : 10.f;
+		const float chase_speed_r = is_portamento_r ? 0.0005f : 10.f;
 
-		lead_l_volume.target_value() = get_part_volume( Part::LEAD_L ) * leap.lh_is_valid() ? 1.f : 0.f;
-		lead_r_volume.target_value() = get_part_volume( Part::LEAD_R ) * leap.rh_is_valid() ? 1.f : 0.f;
+		// std::cout << chase_speed_l << ", " << chase_speed_r << std::endl;
+
+		if ( is_on_step() || is_portamento_l )
+		{
+			lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] / Tone::C3, chase_speed_l ) );
+		}
+		if ( is_on_step() || is_portamento_r )
+		{
+			lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] / Tone::C3, chase_speed_r ) );
+		}
+
+		lead_l_volume.target_value() = get_part_volume( Part::LEAD_L ) * ( leap.lh_is_valid() && leap.lh_pos().z < area_threashold_z ) ? 1.f : 0.f;
+		lead_r_volume.target_value() = get_part_volume( Part::LEAD_R ) * ( leap.rh_is_valid() && leap.rh_pos().z < area_threashold_z ) ? 1.f : 0.f;
 
 		lead_l_volume.chase();
 		lead_r_volume.chase();
@@ -512,13 +536,13 @@ public:
 	float get_part_volume( Part part ) const
 	{
 		static const float volume_table[ static_cast< int >( Part::MAX ) ][ PAGES ] = {
-		//	{ TAP, BASS, KICK,SNARE, DEMO,    R,   L, FREE,  MAX, FIN }
-			{ 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 2.f }, // KICK
-			{ 0.f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 1.f }, // SNARE
-			{ 0.f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.f, 0.f }, // BASS
-			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 1.f, 0.f }, // LEAD_L
-			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 1.f, 0.f }, // LEAD_R
-			{ 1.f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.f, 1.f }, // TAP
+		//	{ TAP, BASS, KICK,SNARE, DEMO,    R,   L,   FREE,  MAX, FIN }
+			{ 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.f, 2.f }, // KICK
+			{ 0.f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.f, 1.f }, // SNARE
+			{ 0.f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.00f, 1.f, 0.f }, // BASS
+			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.75f, 1.f, 0.f }, // LEAD_L
+			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.75f, 1.f, 0.f }, // LEAD_R
+			{ 1.f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.00f, 1.f, 1.f }, // TAP
 		};
 
 		return volume_table[ static_cast< int >( part ) ][ get_page_index() ];
@@ -596,6 +620,8 @@ public:
 	 */
 	void on_note( AudioIOData& io )
 	{
+		is_on_step_ = true;
+
 		if ( leap.pop_page_decremented() )
 		{
 			page_down.reset();
@@ -630,14 +656,14 @@ public:
 
 		if ( step == 0 )
 		{
-			p_step = ( p_step + 1 ) % 4;
+			bar = ( bar + 1 ) % 4;
 
 			bass_env.reset();
 		}
 
 		// 1 小節目の 4 拍のみページを行う
 		// ( 2 ～ 4 小節目でページ変更のジェスチャーした場合でも 1 小節目にページを変更する )
-		if ( p_step == 0 && ( leap.page() != 9 || step == 0  ) )
+		if ( bar == 0 && ( leap.page() != 9 || step == 0  ) )
 		{
 			// ページの変更
 			if ( get_page_index() < leap.page() )
@@ -656,7 +682,7 @@ public:
 
 		// const std::array< float, 4 > bass_rate = { Tone::C3, Tone::E3, Tone::F3, Tone::G3 };
 		const std::array< float, 4 > bass_rate = { Tone::F1, Tone::G1, Tone::A1, Tone::C2 };
-		bass.rate( bass_rate[ p_step ] / Tone::C3 );
+		bass.rate( bass_rate[ bar ] / Tone::C3 );
 
 		// const std::array< float, 4 > pad_1_tones = { Tone::C4, Tone::C4, Tone::A3, Tone::B3 };
 		// const std::array< float, 4 > pad_2_tones = { Tone::G3, Tone::G3, Tone::F3, Tone::G3 };
@@ -666,9 +692,9 @@ public:
 		const std::array< float, 4 > pad_2_tones = { Tone::A3, Tone::A3, Tone::C4, Tone::B3 };
 		const std::array< float, 4 > pad_3_tones = { Tone::G3, Tone::F3, Tone::G3, Tone::G3 };
 
-		pad1.rate( pad_1_tones[ p_step ] / Tone::C3 );
-		pad2.rate( pad_2_tones[ p_step ] / Tone::C3 );
-		pad3.rate( pad_3_tones[ p_step ] / Tone::C3 );
+		pad1.rate( pad_1_tones[ bar ] / Tone::C3 );
+		pad2.rate( pad_2_tones[ bar ] / Tone::C3 );
+		pad3.rate( pad_3_tones[ bar ] / Tone::C3 );
 
 		if ( page == Page::FREE )
 		{
@@ -740,7 +766,7 @@ public:
 			},
 		};
 
-		const int is_fill_in = p_step < 3 ? 0 : 1;
+		const int is_fill_in = bar < 3 ? 0 : 1;
 
 		const std::array< int, PAGES > kick_pattern  = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
 		const std::array< int, PAGES > snare_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
@@ -817,7 +843,7 @@ public:
 			if ( page == Page::BASS )
 			{
 				step = 0;
-				p_step = 0;
+				bar = 0;
 			}
 
 			if ( page == Page::CLIMAX )
@@ -900,12 +926,12 @@ int main( int, char** )
 	Leap::Controller controller;
 
 	controller.addListener( leap );
+
 	controller.setPolicy( Leap::Controller::POLICY_BACKGROUND_FRAMES );
 	controller.setPolicy( Leap::Controller::POLICY_ALLOW_PAUSE_RESUME );
 
-	controller.config().setFloat( "Gesture.Swipe.MinLength", 400.f );
-	controller.config().setFloat( "Gesture.Swipe.MinVelocity", 100.f );
-	bool b = controller.config().save();
+	// std::cout << controller.config().getFloat( "Gesture.Swipe.MinLength" ) << std::endl;
+
 
 	MyApp( in, out ).start();
 

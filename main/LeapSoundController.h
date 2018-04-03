@@ -148,7 +148,9 @@ public:
 
 	float x_pos_to_rate( float x ) const
 	{
-		float rate = ( x + 1000.f ) / 2000.f;
+		const float max_x = 250.f;
+
+		float rate = ( x + max_x ) / ( max_x * 2.f );
 
 		if ( rate < 0.f )
 		{
@@ -164,8 +166,8 @@ public:
 
 	float y_pos_to_rate( float y ) const
 	{
-		const float max_y = 1000.f;
 		const float min_y = 100.f;
+		const float max_y = 1000.f;
 
 		return std::clamp( ( y - min_y ) / ( max_y - min_y ), 0.f, 1.f );
 	}
@@ -263,6 +265,10 @@ public:
 		controller.enableGesture( Leap::Gesture::TYPE_SWIPE );
 		controller.enableGesture( Leap::Gesture::TYPE_KEY_TAP );
 		controller.enableGesture( Leap::Gesture::TYPE_SCREEN_TAP );
+
+		controller.config().setFloat( "Gesture.Swipe.MinLength", 400.f );
+		controller.config().setFloat( "Gesture.Swipe.MinVelocity", 100.f );
+		controller.config().save();
 	}
 
 	void onDisconnect(const Leap::Controller&) override { std::cout << "Disconnected" << std::endl; }
