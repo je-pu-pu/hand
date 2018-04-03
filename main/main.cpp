@@ -205,6 +205,7 @@ public:
 		, tap_env( 0.01f, 0.5f )
 		, kick_env( 0.01f, 0.25f )
 		, snare_env( 0.01f, 0.25f )
+		, bass_env( 0.01f )
 	{
 		timer.period( 60.f / get_bpm() / 4.f );
 		timer.phaseMax();
@@ -458,6 +459,8 @@ public:
 			}
 		}
 
+		int n = 0;
+
 		while ( io() )
 		{
 			is_on_step_ = false;
@@ -472,7 +475,9 @@ public:
 			update_bass();
 			update_lead();
 
-			mix( io );
+			mix( io, n );
+
+			n++;
 		}
 	}
 
@@ -492,14 +497,8 @@ public:
 
 	void update_lead()
 	{
-		const std::array< float, 8 > tones_diatonic_low  = { Tone::C4, Tone::D4, Tone::E4, Tone::F4, Tone::G4, Tone::A4, Tone::B4, Tone::C5, };
-		const std::array< float, 8 > tones_diatonic_high = { Tone::C5, Tone::D5, Tone::E5, Tone::F5, Tone::G5, Tone::A5, Tone::B5, Tone::C6, };
-		const std::array< float, 6 > tones_pentatonic_low = { Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4, Tone::C5 };
-		const std::array< float, 6 > tones_pentatonic_mid = { Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5, Tone::C6 };
-		const std::array< float, 6 > tones_pentatonic_high = { Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,Tone::C7 };
-
-		const auto& tones_l = tones_pentatonic_low; // lead_rate_diatonic_low;
-		const auto& tones_r = tones_pentatonic_high; // lead_rate_diatonic_high;
+		const bool is_position_valid_l = leap.lh_is_valid() && leap.lh_pos().z < area_threashold_z;
+		const bool is_position_valid_r = leap.rh_is_valid() && leap.rh_pos().z < area_threashold_z;
 		
 		const bool is_ll = range_to_rate( leap.x_pos_to_rate( leap.lh_pos().x ), 0.10f, 0.25f ) < 0.5f; // 左手が左エリアの左側にある
 		const bool is_rr = range_to_rate( leap.x_pos_to_rate( leap.rh_pos().x ), 0.75f, 0.90f ) > 0.5f; // 右手が右エリアの右側にある
@@ -510,19 +509,34 @@ public:
 		const float chase_speed_l = is_portamento_l ? 0.0001f : 10.f;
 		const float chase_speed_r = is_portamento_r ? 0.0005f : 10.f;
 
+		const std::array< float, 8 > tones_diatonic_low  = { Tone::C4, Tone::D4, Tone::E4, Tone::F4, Tone::G4, Tone::A4, Tone::B4, Tone::C5, };
+		const std::array< float, 8 > tones_diatonic_high = { Tone::C5, Tone::D5, Tone::E5, Tone::F5, Tone::G5, Tone::A5, Tone::B5, Tone::C6, };
+		const std::array< float, 6 > tones_pentatonic_low = { Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4, Tone::C5 };
+		const std::array< float, 6 > tones_pentatonic_mid = { Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5, Tone::C6 };
+		const std::array< float, 6 > tones_pentatonic_high = { Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,Tone::C7 };
+
+		const auto& tones_l = tones_pentatonic_low;
+		const auto& tones_r = tones_pentatonic_mid;
+		
+		const auto target_tone_l = is_position_valid_l ? tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] : tones_l[ tones_l.size() - 1 ];
+		const auto target_tone_r = is_position_valid_r ? tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] : tones_r[ tones_r.size() - 1 ];
+
 		// std::cout << chase_speed_l << ", " << chase_speed_r << std::endl;
 
 		if ( is_on_step() || is_portamento_l )
 		{
-			lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] / Tone::C3, chase_speed_l ) );
+			lead_l.rate( math::chase( static_cast< float >( lead_l.rate() ), target_tone_l / Tone::C3, chase_speed_l ) );
 		}
 		if ( is_on_step() || is_portamento_r )
 		{
-			lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] / Tone::C3, chase_speed_r ) );
+			lead_r.rate( math::chase( static_cast< float >( lead_r.rate() ), target_tone_r / Tone::C3, chase_speed_r ) );
 		}
 
-		lead_l_volume.target_value() = get_part_volume( Part::LEAD_L ) * ( leap.lh_is_valid() && leap.lh_pos().z < area_threashold_z ) ? 1.f : 0.f;
-		lead_r_volume.target_value() = get_part_volume( Part::LEAD_R ) * ( leap.rh_is_valid() && leap.rh_pos().z < area_threashold_z ) ? 1.f : 0.f;
+		lead_l_volume.target_value() = is_position_valid_l ? 1.f : 0.f;
+		lead_r_volume.target_value() = is_position_valid_r ? 1.f : 0.f;
+
+		lead_l_volume.speed() = 0.0001f * ( is_position_valid_l ? 1.f : 0.2f );
+		lead_r_volume.speed() = 0.0001f * ( is_position_valid_r ? 1.f : 0.2f );
 
 		lead_l_volume.chase();
 		lead_r_volume.chase();
@@ -536,25 +550,25 @@ public:
 	float get_part_volume( Part part ) const
 	{
 		static const float volume_table[ static_cast< int >( Part::MAX ) ][ PAGES ] = {
-		//	{  TAP, BASS, KICK,SNARE, DEMO,    R,   L,   FREE,  MAX, FIN }
-			{ 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 2.f }, // KICK
-			{ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 1.f }, // SNARE
-			{ 0.0f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 0.f }, // BASS
-			{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_L
-			{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_R
-			{ 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.00f, 1.0f, 1.f }, // TAP
-			{ 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.5f, 0.5f, 1.00f, 1.0f, 1.f }, // BRIGHT
-			{ 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.50f, 0.5f, 0.f }, // PAD
+		//	{   TAP, BASS,  KICK,SNARE, DEMO,    R,   L,   FREE,  MAX, FIN }
+			{ 0.00f, 0.00f, 1.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 2.f }, // KICK
+			{ 0.00f, 0.00f, 0.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 1.f }, // SNARE
+			{ 0.00f, 0.50f, 0.50f, 0.50f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 0.f }, // BASS
+			{ 0.00f, 0.00f, 0.00f, 0.00f, 0.0f, 0.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_L
+			{ 0.00f, 0.00f, 0.00f, 0.00f, 0.0f, 1.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_R
+			{ 1.00f, 0.00f, 0.00f, 0.00f, 1.0f, 0.0f, 1.0f, 1.00f, 1.0f, 1.f }, // TAP
+			{ 0.10f, 0.10f, 0.10f, 0.10f, 0.1f, 0.5f, 0.5f, 1.00f, 1.0f, 1.f }, // BRIGHT
+			{ 0.25f, 0.25f, 0.25f, 0.25f, 0.5f, 0.5f, 0.5f, 0.50f, 0.5f, 0.f }, // PAD
 		};
 
 		return volume_table[ static_cast< int >( part ) ][ get_page_index() ];
 	}
 
-	void mix( AudioIOData& io )
+	void mix( AudioIOData& io, int io_step )
 	{
 		//                                                { TAP,    BASS,  KICK, SNARE,  DEMO,    R,      L,  FREE,   MAX, FIN }
-		const std::array< float, PAGES >     delay_gain = { 0.25f, 0.10f, 0.10f, 0.10f, 0.10f, 0.20f, 0.20f, 0.20f, 0.30f, 0.50f };
-		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.25f };
+		const std::array< float, PAGES >     delay_gain = { 0.25f, 0.10f, 0.10f, 0.10f, 0.10f, 0.20f, 0.20f, 0.20f, 0.30f, 0.75f };
+		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f };
 
 		float s = 0.f;
 			
@@ -583,6 +597,7 @@ public:
 		if ( is_recording() )
 		{
 			s *= 0.2f;
+			s += io.in( 0, io_step ) * 0.3f;
 		}
 
 		io.out( 0 ) = s;
@@ -664,17 +679,18 @@ public:
 			bass_env.reset();
 		}
 
-		// 1 小節目の 4 拍のみページを行う
+		// 1 小節目の 1 拍目のみでページ変更を行う
 		// ( 2 ～ 4 小節目でページ変更のジェスチャーした場合でも 1 小節目にページを変更する )
 		if ( bar == 0 && ( leap.page() != 9 || step == 0  ) )
 		{
 			// ページの変更
-			if ( get_page_index() < leap.page() )
+			while ( get_page_index() < leap.page() )
 			{
 				page = static_cast< Page >( get_page_index() + 1 );
 				on_page_changed( page, true );
 			}
-			else if ( get_page_index() > leap.page() )
+
+			while ( get_page_index() > leap.page() )
 			{
 				page = static_cast< Page >( get_page_index() - 1 );
 				on_page_changed( page, false );
@@ -699,25 +715,14 @@ public:
 		pad2.rate( pad_2_tones[ bar ] / Tone::C3 );
 		pad3.rate( pad_3_tones[ bar ] / Tone::C3 );
 
-		if ( page == Page::FREE )
+		if ( page >= Page::FREE )
 		{
 			if ( step / 2 % 2 == 1 )
 			{
 				bass.rate( bass.rate() * 2.f );
 			}
 		}
-		else if ( page == Page::CLIMAX )
-		{
-			if ( step % 4 == 2 )
-			{
-				bass.rate( bass.rate() * 2 );
-			}
-			else if ( step % 4 != 0 )
-			{
-				bass.rate( bass.rate() * 3.f / 2.f );
-			}
-		}
-		else if ( page == Page::FINISH )
+		if ( page == Page::FINISH )
 		{
 			finished = true;
 			kick.rate( 1.f );
@@ -754,7 +759,7 @@ public:
 			},
 			{
 				{ 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0 },
-				{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+				{ 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
 			}
 		};
 

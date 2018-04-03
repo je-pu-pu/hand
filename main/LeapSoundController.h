@@ -315,6 +315,15 @@ public:
 
 			if ( hand.confidence() < 1.f )
 			{
+				if ( hand.isLeft() )
+				{
+					stop_l_slider_moving();
+				}
+				if ( hand.isRight() )
+				{
+					stop_r_slider_moving();
+				}
+
 				continue;
 			}
 
