@@ -153,7 +153,7 @@ public:
 
 	enum class Part
 	{
-		KICK = 0, SNARE, BASS, LEAD_L, LEAD_R, TAP,
+		KICK = 0, SNARE, BASS, LEAD_L, LEAD_R, TAP, BRIGHT, PAD,
 		MAX
 	};
 
@@ -171,13 +171,13 @@ public:
 	Accum<> timer;
 
 	SamplePlayer<> tap, page_down, page_up, kick, snare;
-	ADSR<> tap_env, kick_env, snare_env;
+	AD<> tap_env, kick_env, snare_env;
 
 	SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r, pad1, pad2, pad3;
 	ADSR<> bass_env;
 	
 	SamplePlayer<> bright;
-	ADSR<> bright_env;
+	AD<> bright_env;
 
 	Biquad<> bq_filter;
 	Delay<> delay;
@@ -202,6 +202,9 @@ public:
 
 	MyApp( int in, int out )
 		: AudioApp( in, out )
+		, tap_env( 0.01f, 0.5f )
+		, kick_env( 0.01f, 0.25f )
+		, snare_env( 0.01f, 0.25f )
 	{
 		timer.period( 60.f / get_bpm() / 4.f );
 		timer.phaseMax();
@@ -226,12 +229,6 @@ public:
 		delay.delay( 60.f / get_bpm() / 2.f );
 
 		bq_filter.type( gam::HIGH_PASS );
-
-		kick_env.attack( 0.001f );
-		kick_env.sustain( 0.5f );
-
-		snare_env.attack( 0.001f );
-		snare_env.sustain( 0.5f );
 
 		leap.set_r_slider( 2, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 		leap.set_r_slider( 3, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
@@ -453,8 +450,11 @@ public:
 		{
 			for ( int n = 0; n < io.framesPerBuffer(); n++ )
 			{
-				rec_buf[ rec_frame_index ] = io.in( 0, n );
-				rec_frame_index = ( rec_frame_index + 1 ) % rec_buf.size();
+				if ( rec_frame_index < rec_buf.size() )
+				{
+					rec_buf[ rec_frame_index ] = io.in( 0, n );
+					rec_frame_index++;
+				}
 			}
 		}
 
@@ -536,13 +536,15 @@ public:
 	float get_part_volume( Part part ) const
 	{
 		static const float volume_table[ static_cast< int >( Part::MAX ) ][ PAGES ] = {
-		//	{ TAP, BASS, KICK,SNARE, DEMO,    R,   L,   FREE,  MAX, FIN }
-			{ 0.f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.f, 2.f }, // KICK
-			{ 0.f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.f, 1.f }, // SNARE
-			{ 0.f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.00f, 1.f, 0.f }, // BASS
-			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.75f, 1.f, 0.f }, // LEAD_L
-			{ 0.f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.75f, 1.f, 0.f }, // LEAD_R
-			{ 1.f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.00f, 1.f, 1.f }, // TAP
+		//	{  TAP, BASS, KICK,SNARE, DEMO,    R,   L,   FREE,  MAX, FIN }
+			{ 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 2.f }, // KICK
+			{ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 1.f }, // SNARE
+			{ 0.0f, 0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 0.f }, // BASS
+			{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_L
+			{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_R
+			{ 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.00f, 1.0f, 1.f }, // TAP
+			{ 0.1f, 0.1f, 0.1f, 0.1f, 0.1f, 0.5f, 0.5f, 1.00f, 1.0f, 1.f }, // BRIGHT
+			{ 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.50f, 0.5f, 0.f }, // PAD
 		};
 
 		return volume_table[ static_cast< int >( part ) ][ get_page_index() ];
@@ -562,9 +564,10 @@ public:
 		s += lead_l() * get_part_volume( Part::LEAD_L ) * lead_l_volume.value();
 		s += lead_r() * get_part_volume( Part::LEAD_R ) * lead_r_volume.value();
 		s +=    tap() * get_part_volume( Part::TAP    ) * tap_env();
-		
-		s += ( pad1() + pad2() + pad3() ) / 3.f * 0.5f;
-		s += bright() * bright_env();
+
+		const float pad = ( pad1() + pad2() + pad3() ) / 3.f;
+		s += pad      * get_part_volume( Part::PAD );
+		s += bright() * get_part_volume( Part::BRIGHT ) * bright_env();
 
 		s += page_down() + page_up();
 		s /= static_cast< float >( Part::MAX );
@@ -793,7 +796,6 @@ public:
 		{
 			bright.rate( bright_tone / Tone::C3 );
 			bright.reset();
-			bright_env.sustain( 0.01f );
 			bright_env.reset();
 		}
 	}
