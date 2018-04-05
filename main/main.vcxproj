@@ -111,6 +111,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -132,15 +133,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Config.cpp" />
+    <ClCompile Include="HandAudioCallback.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Tone.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AudioApp.h" />
+    <ClInclude Include="AudioCallback.h" />
     <ClInclude Include="chase_value.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="Hand.h" />
+    <ClInclude Include="HandAudioCallback.h" />
     <ClInclude Include="LeapSoundController.h" />
     <ClInclude Include="math.h" />
     <ClInclude Include="serialize.h" />
+    <ClInclude Include="Tone.h" />
   </ItemGroup>
   <ItemGroup>
     <Library Include="D:\lib\Gamma-master\external\lib_win32\portaudio_x86.lib" />

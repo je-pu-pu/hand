@@ -1,26 +1,22 @@
-#ifndef GAMMA_AUDIO_APP_H_INC
-#define GAMMA_AUDIO_APP_H_INC
-/*	Gamma - Generic processing library
-	See COPYRIGHT file for authors and license information
-	
-	Description: A very basic audio application abstraction
-*/
+#pragma once
 
-#include <stdio.h>
-#include "Gamma/AudioIO.h"
-#include "Gamma/Domain.h"
+#include "LeapSoundController.h"
+#include <Gamma/AudioIO.h>
+#include <Gamma/Domain.h>
+#include <iostream>
 
-namespace gam{
-
-class AudioApp : public AudioCallback
+class AudioCallback : public gam::AudioCallback
 {
+private:
+	gam::AudioIO mAudioIO;
+
 public:
-	AudioApp( int in_device_no, int out_device_no )
+	AudioCallback( int in_device_no, int out_device_no )
 	{
 		mAudioIO.append( *this );
 		
-		auto device_in = AudioDevice( in_device_no );
-		auto device_out = AudioDevice( out_device_no );
+		auto device_in = gam::AudioDevice( in_device_no );
+		auto device_out = gam::AudioDevice( out_device_no );
 
 		std::cout << "in  : " << device_in.name() << std::endl;
 		std::cout << "out : " << device_out.name() << std::endl;
@@ -31,17 +27,23 @@ public:
 		initAudio( 44100, 64, 2, 1 );
 	}
 
+	~AudioCallback()
+	{
+		mAudioIO.remove( *this );
+		mAudioIO.stop();
+	}
+
 	void initAudio( double framesPerSec, unsigned framesPerBuffer, unsigned outChans, unsigned inChans )
 	{
 		mAudioIO.framesPerSecond(framesPerSec);
 		mAudioIO.framesPerBuffer(framesPerBuffer);
 		mAudioIO.channelsOut(outChans);
 		mAudioIO.channelsIn(inChans);
-		sampleRate(framesPerSec);
+		gam::sampleRate(framesPerSec);
 	}
 
-	AudioIO& audioIO() { return mAudioIO; }
-	const AudioIO& audioIO() const { return mAudioIO; }
+	gam::AudioIO& audioIO() { return mAudioIO; }
+	const gam::AudioIO& audioIO() const { return mAudioIO; }
 
 	void start( bool block = true )
 	{
@@ -57,11 +59,9 @@ public:
 			mAudioIO.stop();
 		}
 	}
-	
-private:
-	AudioIO mAudioIO;
+
+	void stop()
+	{
+		mAudioIO.stop();
+	}
 };
-
-}
-
-#endif

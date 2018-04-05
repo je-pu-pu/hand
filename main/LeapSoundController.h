@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <array>
 #include <algorithm>
@@ -8,7 +10,7 @@
 class LeapSoundController : public Leap::Listener
 {
 public:
-	static const int PAGES = 10;
+	static const int PAGES = 11;
 
 private:
 	int page_ = 0;
@@ -324,6 +326,8 @@ public:
 					stop_r_slider_moving();
 				}
 
+				// std::cout << "c : " << hand.confidence() << std::endl;
+
 				continue;
 			}
 
@@ -479,7 +483,7 @@ protected:
 		}
 
 		// std::cout << "swipe : " << swipe.hands().isEmpty() << std::endl;
-		std::cout << "leap page : " << page_ << std::endl;
+		// std::cout << "leap page : " << page_ << std::endl;
 	}
 
 	void on_key_tap_gesture( const Leap::KeyTapGesture& tap )
