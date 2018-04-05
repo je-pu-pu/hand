@@ -1,10 +1,11 @@
 #include "../../main/Hand.h"
+#include "../../main/HandAudioCallback.h"
 #include "ofApp.h"
 
 ofApp::ofApp( Hand& hand )
 	: hand_( hand )
 {
-	hand_.set_on_step( [this] ( bool on_beat, bool on_bar, const std::string& current_page_name, const std::string& next_page_name ) {
+	hand_.set_on_step( [this] ( bool on_beat, bool on_bar ) {
 		if ( on_bar )
 		{
 			bg_color_ = ofColor( 255, 255, 255 );
@@ -13,9 +14,6 @@ ofApp::ofApp( Hand& hand )
 		{
 			bg_color_ = ofColor( 63, 63, 63 );
 		}
-
-		current_page_name_ = current_page_name;
-		next_page_name_ = next_page_name;
 	} );
 }
 
@@ -34,9 +32,16 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update()
 {
-	bg_color_.r -= 0.05f;
-	bg_color_.g -= 0.05f;
-	bg_color_.b -= 0.05f;
+	if ( audio().get_page() == HandAudio::Page::FINISH )
+	{
+		bg_color_ = ofColor::red;
+	}
+	else
+	{
+		bg_color_.r -= 0.05f;
+		bg_color_.g -= 0.05f;
+		bg_color_.b -= 0.05f;
+	}
 }
 
 //--------------------------------------------------------------
@@ -45,8 +50,30 @@ void ofApp::draw(){
 
 	// std::string s = std::to_string( ofGetFrameRate() );
 
-	draw_text( current_page_name_, ofGetWindowHeight() / 4 );
-	draw_text( next_page_name_, ofGetWindowHeight() / 4 * 3 );
+	float lx = leap().x_pos_to_rate( leap().lh_pos().x ) * ofGetWindowWidth();
+	float ly = ( 1.f - leap().y_pos_to_rate( leap().lh_pos().y ) ) * ofGetWindowHeight();
+
+	ofSetColor( leap().is_lh_valid() ? ( leap().is_l_slider_moving() ? ofColor::yellowGreen : ofColor::white ) : ofColor::red );
+	ofDrawCircle( ofPoint( lx, ly ), audio().is_lh_lead_position() ? 100.f : 50.f );
+
+	float rx = leap().x_pos_to_rate( leap().rh_pos().x ) * ofGetWindowWidth();
+	float ry = ( 1.f - leap().y_pos_to_rate( leap().rh_pos().y ) ) * ofGetWindowHeight();
+
+	ofSetColor( leap().is_rh_valid() ? ( leap().is_r_slider_moving() ? ofColor::yellowGreen : ofColor::white ) : ofColor::red );
+	ofDrawCircle( ofPoint( rx, ry ), audio().is_rh_lead_position() ? 100.f : 50.f );
+
+	draw_text( HandAudio::get_page_name( audio().get_page() ), ofGetWindowHeight() / 4 );
+	draw_text( HandAudio::get_page_name( audio().get_next_page() ), ofGetWindowHeight() / 4 * 3 );
+}
+
+const HandAudioCallback& ofApp::audio() const
+{
+	return hand_.audio();
+}
+
+const LeapSoundController& ofApp::leap() const
+{
+	return hand_.leap();
 }
 
 void ofApp::draw_text( const std::string& s, float y ) const
@@ -77,7 +104,8 @@ void ofApp::draw_text( const std::string& s, float y ) const
 }
 
 //--------------------------------------------------------------
-void ofApp::keyPressed(int key){
+void ofApp::keyPressed(int key)
+{
 	switch ( key )
 	{
 	case 'f':

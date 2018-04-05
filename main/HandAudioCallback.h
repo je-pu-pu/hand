@@ -177,6 +177,9 @@ public:
 		set_slider_value_r( Page::SNARE, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 	}
 
+	Page get_page() const { return page; }
+	Page get_next_page() const { return static_cast< Page >( leap.page() ); }
+
 	bool is_recording() const
 	{
 		return rec & 0b1;
@@ -441,10 +444,13 @@ public:
 		}
 	}
 
+	bool is_lh_lead_position() const { return leap.is_lh_valid() && leap.lh_pos().z < area_threashold_z; }
+	bool is_rh_lead_position() const { return leap.is_rh_valid() && leap.rh_pos().z < area_threashold_z; }
+
 	void update_lead()
 	{
-		const bool is_position_valid_l = leap.lh_is_valid() && leap.lh_pos().z < area_threashold_z;
-		const bool is_position_valid_r = leap.rh_is_valid() && leap.rh_pos().z < area_threashold_z;
+		const bool is_position_valid_l = is_lh_lead_position();
+		const bool is_position_valid_r = is_rh_lead_position();
 		
 		const bool is_ll = range_to_rate( leap.x_pos_to_rate( leap.lh_pos().x ), 0.10f, 0.25f ) < 0.5f; // 左手が左エリアの左側にある
 		const bool is_rr = range_to_rate( leap.x_pos_to_rate( leap.rh_pos().x ), 0.75f, 0.90f ) > 0.5f; // 右手が右エリアの右側にある
@@ -464,8 +470,8 @@ public:
 		const auto& tones_l = tones_pentatonic_low;
 		const auto& tones_r = page == Page::CLIMAX ? tones_pentatonic_high : tones_pentatonic_mid;
 		
-		const auto target_tone_l = is_position_valid_l ? tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] : tones_l[ tones_l.size() - 1 ];
-		const auto target_tone_r = is_position_valid_r ? tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] : tones_r[ tones_r.size() - 1 ];
+		const auto target_tone_l = is_lh_lead_position() ? tones_l[ leap.y_pos_to_index( leap.lh_pos().y, tones_l.size() ) ] : tones_l[ tones_l.size() - 1 ];
+		const auto target_tone_r = is_rh_lead_position() ? tones_r[ leap.y_pos_to_index( leap.rh_pos().y, tones_r.size() ) ] : tones_r[ tones_r.size() - 1 ];
 
 		// std::cout << chase_speed_l << ", " << chase_speed_r << std::endl;
 
@@ -594,14 +600,14 @@ public:
 			const auto tapped_y = l_tapped ? leap.lh_pos().y : leap.rh_pos().y;
 			const int tap_index = leap.y_pos_to_index( tapped_y, tap_note.size() - random_note_range ) + rand() % random_note_range;
 			
-			tap.rate( ( page == Page::TAP && ! leap.lh_is_valid() ) ? 1.f : ( tap_note[ tap_index ] / Tone::C4 ) );
+			tap.rate( ( page == Page::TAP && ! leap.is_lh_valid() ) ? 1.f : ( tap_note[ tap_index ] / Tone::C4 ) );
 			tap.reset();
 			tap_env.reset();
 		}
 
 		step = ( step + 1 ) % 16;
 
-		on_step( ( step % 4 ) == 0, step == 0, get_page_name( page ), get_page_name( static_cast< Page >( leap.page() ) ) );
+		on_step( ( step % 4 ) == 0, step == 0 );
 
 		if ( step == 0 )
 		{
@@ -662,7 +668,7 @@ public:
 		}
 	}
 
-	void on_step( bool, bool, const std::string&, const std::string& );
+	void on_step( bool, bool );
 	
 
 	void update_sequencer()

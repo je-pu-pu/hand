@@ -29,7 +29,7 @@ private:
 	LeapSoundController leap_;
 	Leap::Controller controller_;
 
-	std::function< void( bool, bool, const std::string&, const std::string& ) > on_step_;
+	std::function< void( bool, bool ) > on_step_;
 
 public:
 	Hand()
@@ -82,9 +82,11 @@ public:
 		audio_callback_->start( false );
 	}
 
-	void set_on_step( std::function< void( bool, bool, const std::string&, const std::string& ) > f ) { on_step_ = f;  }
-	void on_step( bool on_beat, bool on_bar, const std::string& cpn, const std::string& npn ) { if ( on_step_ ) { on_step_( on_beat, on_bar, cpn, npn ); } };
-	// void on_step();
+	void set_on_step( std::function< void( bool, bool ) > f ) { on_step_ = f; }
+	void on_step( bool on_beat, bool on_bar ) { if ( on_step_ ) { on_step_( on_beat, on_bar ); } };
+
+	const HandAudioCallback& audio() const { return *audio_callback_; }
+	const LeapSoundController& leap() const { return leap_; }
 
 	void stop()
 	{

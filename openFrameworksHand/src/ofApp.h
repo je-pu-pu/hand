@@ -4,18 +4,24 @@
 #include <string>
 
 class Hand;
+class HandAudioCallback;
+class LeapSoundController;
 
-class ofApp : public ofBaseApp{
+class ofApp : public ofBaseApp
+{
+public:
+	typedef HandAudioCallback HandAudio;
+
 	protected:
 		Hand& hand_;
 		ofTrueTypeFont font;
 
-
 		ofFloatColor bg_color_;
-		std::string current_page_name_;
-		std::string next_page_name_;
 
 		void draw_text( const std::string&, float ) const;
+
+		const HandAudioCallback& audio() const;
+		const LeapSoundController& leap() const;
 
 	public:
 		ofApp( Hand& );

@@ -108,11 +108,14 @@ public:
 		}
 	}
 
-	bool lh_is_valid() const { return lh_.isValid(); }
-	bool rh_is_valid() const { return rh_.isValid(); }
+	bool is_lh_valid() const { return lh_.isValid(); }
+	bool is_rh_valid() const { return rh_.isValid(); }
 
 	const Leap::Vector& lh_pos() const { return lh_pos_; }
 	const Leap::Vector& rh_pos() const { return rh_pos_; }
+
+	bool is_l_slider_moving() const { return is_l_slider_moving_; }
+	bool is_r_slider_moving() const { return is_r_slider_moving_; }
 
 	const float l_slider( int page ) const
 	{
@@ -168,7 +171,7 @@ public:
 
 	float y_pos_to_rate( float y ) const
 	{
-		const float min_y = 100.f;
+		const float min_y = 200.f;
 		const float max_y = 1000.f;
 
 		return std::clamp( ( y - min_y ) / ( max_y - min_y ), 0.f, 1.f );
