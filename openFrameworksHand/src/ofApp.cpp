@@ -38,9 +38,9 @@ void ofApp::update()
 	}
 	else
 	{
-		bg_color_.r -= 0.05f;
-		bg_color_.g -= 0.05f;
-		bg_color_.b -= 0.05f;
+		bg_color_.r *= 0.85f;
+		bg_color_.g *= 0.85f;
+		bg_color_.b *= 0.85f;
 	}
 }
 

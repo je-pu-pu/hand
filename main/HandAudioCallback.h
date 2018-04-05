@@ -75,7 +75,7 @@ public:
 	float get_part_volume( Part part ) const
 	{
 		static const float volume_table[ static_cast< int >( Part::MAX ) ][ PAGES ] = {
-		//	{   TAP, PAD,    BASS,  KICK,SNARE, DEMO,    R,   L,   FREE,  MAX, FIN }
+		//	{   TAP,   PAD,  BASS,  KICK, SNARE, DEMO,    R,    L,  FREE,  MAX, FIN }
 			{ 0.00f, 0.00f, 0.00f, 1.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 2.f }, // KICK
 			{ 0.00f, 0.00f, 0.00f, 0.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 1.f }, // SNARE
 			{ 0.00f, 0.00f, 0.50f, 0.50f, 0.50f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 0.f }, // BASS
@@ -91,6 +91,10 @@ public:
 
 	// BPM
 	int get_bpm() const { return 120; }
+
+private:
+	Hand& hand;
+	LeapSoundController& leap;
 
 	Page page = Page::TAP;
 	
@@ -114,22 +118,20 @@ public:
 	gam::Biquad<> bq_filter;
 	gam::Delay<> delay;
 
-	common::chase_value< float > bass_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
+	common::chase_value< float > bass_volume   = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 
-	unsigned int rec = 0;
-	gam::Array<float> rec_buf;
+	unsigned int recording_key_state_ = 0;
+	int recording_frame_index_ = 0;
 
-	int rec_frame_index = 0;
+	gam::Array< float > common_tone_buffer_;
+	gam::Array< float > kick_buffer_;
+	gam::Array< float > snare_buffer_;
 
 	bool is_on_step_;					/// ÇΩÇ¡ÇΩç° 16 ï™âπïÑÇÃì™
 // 	bool is_on_beat_;					/// ÇΩÇ¡ÇΩç°  4 ï™âπïÑÇÃì™
 // 	bool is_on_bar_;					/// ÇΩÇ¡ÇΩç°è¨êﬂÇÃì™
-
-private:
-	Hand& hand;
-	LeapSoundController& leap;
 
 protected:
 	bool is_on_step() const { return is_on_step_; }
@@ -138,6 +140,21 @@ protected:
 	float get_slider_value_r( Page page ) const { return leap.r_slider( static_cast< int >( page ) ); }
 	void set_slider_value_l( Page page, float value ) { leap.set_l_slider( static_cast< int >( page ), value ); }
 	void set_slider_value_r( Page page, float value ) { leap.set_r_slider( static_cast< int >( page ), value ); }
+
+	gam::Array< float >& current_recording_buffer()
+	{
+		if ( page == Page::KICK )
+		{
+			return kick_buffer_;
+		}
+
+		if ( page == Page::SNARE )
+		{
+			return snare_buffer_;
+		}
+
+		return common_tone_buffer_;
+	}
 
 public:
 	HandAudioCallback( Hand& hand, int in, int out, LeapSoundController& leap )
@@ -182,7 +199,7 @@ public:
 
 	bool is_recording() const
 	{
-		return rec & 0b1;
+		return recording_key_state_ & 0b1;
 	}
 
 	bool is_speaking_mode() const
@@ -192,12 +209,12 @@ public:
 
 	bool is_record_started() const
 	{
-		return ( !( rec & 0x10 ) ) && ( rec & 0b1 );
+		return ( !( recording_key_state_ & 0x10 ) ) && ( recording_key_state_ & 0b1 );
 	}
 
 	bool is_record_finished() const
 	{
-		return ( rec & 0b10 ) && !( rec & 0b1 );
+		return ( recording_key_state_ & 0b10 ) && !( recording_key_state_ & 0b1 );
 	}
 
 	static float range_to_rate( float value, float min, float max )
@@ -250,57 +267,57 @@ public:
 			leap.move_r_slider_force( +speed );
 		}
 
-		rec <<= 1;
-		rec |= static_cast< bool >( GetAsyncKeyState( 'R' ) & 0b1000000000000000 );
+		recording_key_state_ <<= 1;
+		recording_key_state_ |= static_cast< bool >( GetAsyncKeyState( 'R' ) & 0b1000000000000000 );
 
 		if ( is_record_started() )
 		{
-			rec_frame_index = 0;
-			rec_buf.resize( get_frames_per_beat() * 4, 0 );
+			recording_frame_index_ = 0;
+			current_recording_buffer().resize( get_frames_per_beat() * 4, 0 );
 		}
 		else if ( is_record_finished() )
 		{
-			rec_buf.resize( std::max( rec_frame_index, 64 ) );
+			current_recording_buffer().resize( std::max( recording_frame_index_, 64 ) );
 			
 			// analysis( rec_buf );
 			// print_edge( rec_buf );
 
-			gam::arr::normalize( & rec_buf[ 0 ], rec_buf.size() );
+			gam::arr::normalize( & current_recording_buffer()[ 0 ], current_recording_buffer().size() );
 
 			if ( page == Page::KICK )
 			{
-				kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+				kick.buffer( kick_buffer_, audioIO().framesPerSecond(), 1 );
 				set_slider_value_r( Page::KICK, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 			}
 			else if ( page == Page::SNARE )
 			{
-				snare.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+				snare.buffer( snare_buffer_, audioIO().framesPerSecond(), 1 );
 				set_slider_value_r( Page::SNARE, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 			}
 			else
 			{
-				tap.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+				tap.buffer( common_tone_buffer_, audioIO().framesPerSecond(), 1 );
 
 				if ( page >= Page::PAD )
 				{
-					smoothing( rec_buf );
+					smoothing( common_tone_buffer_ );
 					// print_edge( rec_buf );
 
-					bass.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+					bass.buffer( common_tone_buffer_, audioIO().framesPerSecond(), 1 );
 					lead_l.buffer( bass );
 					lead_r.buffer( bass );
 					pad1.buffer( bass );
 					pad2.buffer( bass );
 					pad3.buffer( bass );
 
-					kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+					kick.buffer( common_tone_buffer_, audioIO().framesPerSecond(), 1 );
 					snare.buffer( kick );
 					bright.buffer( kick );
 				}
 			}
 		}
 
-		// std::cout << rec << std::endl;
+		// std::cout << recording_key_state_ << std::endl;
 	}
 
 	void smoothing( gam::Array<float>& buf )
@@ -418,10 +435,10 @@ public:
 		{
 			for ( int n = 0; n < io.framesPerBuffer(); n++ )
 			{
-				if ( rec_frame_index < rec_buf.size() )
+				if ( recording_frame_index_ < current_recording_buffer().size() )
 				{
-					rec_buf[ rec_frame_index ] = io.in( 0, n );
-					rec_frame_index++;
+					current_recording_buffer()[ recording_frame_index_ ] = io.in( 0, n );
+					recording_frame_index_++;
 				}
 			}
 		}
