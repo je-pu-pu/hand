@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <iostream>
+#include <functional>
 
 class Hand
 {
@@ -22,26 +23,38 @@ private:
 	boost::asio::ip::tcp::acceptor acceptor_;
 	bool is_central_connected_ = false;
 
+	std::thread server_thread_;
+
+	Config config_;
 	LeapSoundController leap_;
+	Leap::Controller controller_;
+
+	std::function< void( bool, bool, const std::string&, const std::string& ) > on_step_;
 
 public:
 	Hand()
 		: server_socket_( io_service_ )
 		, acceptor_( io_service_, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(), 8080 ) )
 	{
+
 	}
 
-	void start()
+	~Hand()
+	{
+		stop();
+	}
+
+	void start( bool block = true )
 	{
 		gam::AudioDevice::printAll();
 
-		int in = 0, out = 0;
+		int in = 0;
+		int out = 0;
 
-		Config config;
-		if ( config.load_file( "./config.txt" ) )
+		if ( config_.load_file( "./config.txt" ) )
 		{
-			in = config.get( "input_device_no", 0 );
-			out = config.get( "output_device_no", 0 );
+			in = config_.get( "input_device_no", 0 );
+			out = config_.get( "output_device_no", 0 );
 		}
 		else
 		{
@@ -51,37 +64,39 @@ public:
 			std::cout << "output device no : ";
 			std::cin >> out;
 
-			config.set( "input_device_no", in );
-			config.set( "output_device_no", out );
+			config_.set( "input_device_no", in );
+			config_.set( "output_device_no", out );
 		}
 
-		Leap::Controller controller;
+		controller_.addListener( leap_ );
 
-		controller.addListener( leap_ );
-
-		controller.setPolicy( Leap::Controller::POLICY_BACKGROUND_FRAMES );
-		controller.setPolicy( Leap::Controller::POLICY_ALLOW_PAUSE_RESUME );
+		controller_.setPolicy( Leap::Controller::POLICY_BACKGROUND_FRAMES );
+		controller_.setPolicy( Leap::Controller::POLICY_ALLOW_PAUSE_RESUME );
 
 		// std::cout << controller.config().getFloat( "Gesture.Swipe.MinLength" ) << std::endl;
 
 		audio_callback_ = std::make_unique< HandAudioCallback >( *this, in, out, leap_ );
 
-		std::thread server_thread = start_server();
+		server_thread_ = start_server();
 
 		audio_callback_->start( false );
+	}
 
-		int x;
-		std::cin >> x;
+	void set_on_step( std::function< void( bool, bool, const std::string&, const std::string& ) > f ) { on_step_ = f;  }
+	void on_step( bool on_beat, bool on_bar, const std::string& cpn, const std::string& npn ) { if ( on_step_ ) { on_step_( on_beat, on_bar, cpn, npn ); } };
+	// void on_step();
 
+	void stop()
+	{
 		audio_callback_->stop();
 
 		// std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
 
-		controller.removeListener( leap_ );
+		controller_.removeListener( leap_ );
 
-		config.save_file( "./config.txt" );
+		config_.save_file( "./config.txt" );
 
-		server_thread.detach();
+		server_thread_.detach();
 	}
 
 	std::thread start_server()

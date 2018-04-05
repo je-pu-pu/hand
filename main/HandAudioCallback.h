@@ -47,7 +47,7 @@ public:
 
 	static const int PAGES = static_cast< int >( Page::MAX );
 
-	static std::string get_page_name( Page page )
+	static const std::string& get_page_name( Page page )
 	{
 		static std::array< std::string, static_cast< int >( Page::MAX ) > page_name_map = {
 			"TAP",
@@ -601,6 +601,8 @@ public:
 
 		step = ( step + 1 ) % 16;
 
+		on_step( ( step % 4 ) == 0, step == 0, get_page_name( page ), get_page_name( static_cast< Page >( leap.page() ) ) );
+
 		if ( step == 0 )
 		{
 			bar = ( bar + 1 ) % 4;
@@ -659,6 +661,9 @@ public:
 			kick.reset();
 		}
 	}
+
+	void on_step( bool, bool, const std::string&, const std::string& );
+	
 
 	void update_sequencer()
 	{

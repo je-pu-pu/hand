@@ -12,3 +12,7 @@
 /main/*.sdf
 /main/*.user
 /LeapSDK
+/openFrameworksHand/*.wav
+/openFrameworksHand/obj
+/openFrameworksHand/bin
+/main/config.txt
