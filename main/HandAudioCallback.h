@@ -185,6 +185,11 @@ public:
 		return rec & 0b1;
 	}
 
+	bool is_speaking_mode() const
+	{
+		return GetAsyncKeyState( VK_SPACE ) & 0b1000000000000000;
+	}
+
 	bool is_record_started() const
 	{
 		return ( !( rec & 0x10 ) ) && ( rec & 0b1 );
@@ -262,23 +267,31 @@ public:
 
 			gam::arr::normalize( & rec_buf[ 0 ], rec_buf.size() );
 
-			tap.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
-
-			if ( page >= Page::PAD )
+			if ( page == Page::SNARE )
 			{
-				smoothing( rec_buf );
-				// print_edge( rec_buf );
+				snare.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+				set_slider_value_r( Page::SNARE, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+			}
+			else
+			{
+				tap.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
 
-				bass.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
-				lead_l.buffer( bass );
-				lead_r.buffer( bass );
-				pad1.buffer( bass );
-				pad2.buffer( bass );
-				pad3.buffer( bass );
+				if ( page >= Page::PAD )
+				{
+					smoothing( rec_buf );
+					// print_edge( rec_buf );
 
-				kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
-				snare.buffer( kick );
-				bright.buffer( kick );
+					bass.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+					lead_l.buffer( bass );
+					lead_r.buffer( bass );
+					pad1.buffer( bass );
+					pad2.buffer( bass );
+					pad3.buffer( bass );
+
+					kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+					snare.buffer( kick );
+					bright.buffer( kick );
+				}
 			}
 		}
 
@@ -529,7 +542,7 @@ public:
 		s += delay( s * delay_gain[ get_page_index() ] + delay() * delay_feedbak[ get_page_index() ] );
 		s = compress( s );
 
-		if ( is_recording() )
+		if ( is_recording() || is_speaking_mode() )
 		{
 			s *= 0.2f;
 			s += io.in( 0, io_step ) * 0.3f;
