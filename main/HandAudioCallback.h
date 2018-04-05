@@ -267,7 +267,12 @@ public:
 
 			gam::arr::normalize( & rec_buf[ 0 ], rec_buf.size() );
 
-			if ( page == Page::SNARE )
+			if ( page == Page::KICK )
+			{
+				kick.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
+				set_slider_value_r( Page::KICK, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+			}
+			else if ( page == Page::SNARE )
 			{
 				snare.buffer( rec_buf, audioIO().framesPerSecond(), 1 );
 				set_slider_value_r( Page::SNARE, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
@@ -429,7 +434,7 @@ public:
 			// is_on_beat_ = false;
 			// is_on_bar_  = false;
 
-			if ( timer() && ( !finished || leap.is_page_decremented() ) )
+			if ( timer() )
 			{
 				on_note();
 			}
@@ -588,6 +593,47 @@ public:
 	{
 		is_on_step_ = true;
 
+		if ( page != Page::FINISH || step < 15 )
+		{
+			step = ( step + 1 ) % 16;
+
+			on_step( ( step % 4 ) == 0, step == 0 );
+
+			if ( step == 0 )
+			{
+				bar = ( bar + 1 ) % 4;
+			}
+		}
+
+		// 1 小節目の 1 拍目のみでページ変更を行う
+		// ( 2 ～ 4 小節目でページ変更のジェスチャーした場合でも 1 小節目にページを変更する )
+		if ( bar == 0 && step == 0 || page == Page::FINISH )
+		{
+			// ページの変更
+			while ( get_page_index() < leap.page() )
+			{
+				page = static_cast< Page >( get_page_index() + 1 );
+				on_page_changed( page, true );
+			}
+
+			while ( get_page_index() > leap.page() )
+			{
+				page = static_cast< Page >( get_page_index() - 1 );
+				on_page_changed( page, false );
+			}
+		}
+
+		if ( page == Page::FINISH && step > 0 )
+		{
+			return;
+		}
+
+		//
+		if ( step == 0 )
+		{
+			bass_env.reset();
+		}
+
 		if ( leap.pop_page_decremented() )
 		{
 			page_down.reset();
@@ -600,7 +646,7 @@ public:
 		const bool l_tapped = leap.pop_l_tapped();
 		const bool r_tapped = leap.pop_r_tapped();
 
-		if ( l_tapped || r_tapped || page == Page::FINISH )
+		if ( l_tapped || r_tapped )
 		{
 			const int random_note_range = 5;
 			const std::array< float, 21 > tap_note = {
@@ -616,35 +662,6 @@ public:
 			tap.rate( ( page == Page::TAP && ! leap.is_lh_valid() ) ? 1.f : ( tap_note[ tap_index ] / Tone::C4 ) );
 			tap.reset();
 			tap_env.reset();
-		}
-
-		step = ( step + 1 ) % 16;
-
-		on_step( ( step % 4 ) == 0, step == 0 );
-
-		if ( step == 0 )
-		{
-			bar = ( bar + 1 ) % 4;
-
-			bass_env.reset();
-		}
-
-		// 1 小節目の 1 拍目のみでページ変更を行う
-		// ( 2 ～ 4 小節目でページ変更のジェスチャーした場合でも 1 小節目にページを変更する )
-		if ( bar == 0 && step == 0 )
-		{
-			// ページの変更
-			while ( get_page_index() < leap.page() )
-			{
-				page = static_cast< Page >( get_page_index() + 1 );
-				on_page_changed( page, true );
-			}
-
-			while ( get_page_index() > leap.page() )
-			{
-				page = static_cast< Page >( get_page_index() - 1 );
-				on_page_changed( page, false );
-			}
 		}
 
 		update_sequencer();
@@ -686,7 +703,7 @@ public:
 
 	void update_sequencer()
 	{
-		const bool kick_on[ 3 ][ 2 ][ 16 ] = {
+		const bool kick_on[ 4 ][ 2 ][ 16 ] = {
 			{
 				{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 },
 				{ 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
@@ -698,10 +715,14 @@ public:
 			{
 				{ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0 },
 				{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
+			},
+			{
+				{ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+				{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 			}
 		};
 
-		const bool snare_on[ 3 ][ 2 ][ 16 ] = {
+		const bool snare_on[ 4 ][ 2 ][ 16 ] = {
 			{
 				{ 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 },
 				{ 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1 }
@@ -713,10 +734,14 @@ public:
 			{
 				{ 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0 },
 				{ 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
+			},
+			{
+				{ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+				{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 			}
 		};
 
-		const float bright_phrase[ 2 ][ 2 ][ 16 ] = {
+		const float bright_phrase[ 3 ][ 2 ][ 16 ] = {
 			{
 				{ Tone::C5, Tone::__, Tone::G5, Tone::__,  Tone::C6, Tone::__, Tone::C5, Tone::G5,  Tone::__, Tone::C6, Tone::__, Tone::C6,  Tone::G5, Tone::__, Tone::C6, Tone::__, },
 				{ Tone::C5, Tone::__, Tone::G5, Tone::__,  Tone::C6, Tone::__, Tone::C5, Tone::G5,  Tone::__, Tone::C6, Tone::__, Tone::C6,  Tone::G5, Tone::__, Tone::C6, Tone::__, },
@@ -725,12 +750,16 @@ public:
 				{ Tone::A5, Tone::__, Tone::G5, Tone::__,  Tone::E5, Tone::__, Tone::D5, Tone::C5,  Tone::__, Tone::D5, Tone::__, Tone::E5,  Tone::D5, Tone::__, Tone::C5, Tone::__, },
 				{ Tone::A5, Tone::__, Tone::G5, Tone::__,  Tone::E5, Tone::__, Tone::D5, Tone::C5,  Tone::__, Tone::D5, Tone::__, Tone::G5,  Tone::D5, Tone::__, Tone::C5, Tone::__, },
 			},
+			{
+				{ Tone::C5, },
+				{ Tone::__, },
+			},
 		};
 
 		const int is_fill_in = bar < 3 ? 0 : 1;
 
-		const std::array< int, PAGES > kick_pattern  = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
-		const std::array< int, PAGES > snare_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 0 };
+		const std::array< int, PAGES > kick_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
+		const std::array< int, PAGES > snare_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
 
 		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
 		{
@@ -748,7 +777,7 @@ public:
 			snare_env.reset();
 		}
 
-		const float bright_tone = bright_phrase[ page >= Page::FREE ? 1 : 0 ][ is_fill_in ][ step ];
+		const float bright_tone = bright_phrase[ page == Page::FINISH ? 2 : ( page >= Page::FREE ? 1 : 0 ) ][ is_fill_in ][ step ];
 
 		if ( bright_tone  != Tone::__ )
 		{

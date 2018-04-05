@@ -32,7 +32,7 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update()
 {
-	if ( audio().get_page() == HandAudio::Page::FINISH )
+	if ( audio().get_next_page() == HandAudio::Page::FINISH )
 	{
 		bg_color_ = ofColor::red;
 	}
