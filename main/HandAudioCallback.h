@@ -190,8 +190,8 @@ public:
 
 		bq_filter.type( gam::HIGH_PASS );
 
-		set_slider_value_r( Page::KICK,  range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
-		set_slider_value_r( Page::SNARE, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+		set_slider_value_r( Page::KICK,  tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+		set_slider_value_r( Page::SNARE, tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 	}
 
 	Page get_page() const { return page; }
@@ -230,6 +230,23 @@ public:
 		}
 
 		return std::clamp( ( max - min ) * value + min, min, max );
+	}
+
+	static float rate_to_tone_rate( float value, float min, float max )
+	{
+		const float log2_min = std::log2f( min );
+		const float log2_max = std::log2f( max );
+
+		return std::clamp( std::powf( 2.f, ( log2_max - log2_min ) * value + log2_min ), min, max );
+	}
+
+	static float tone_rate_to_rate( float value, float min, float max )
+	{
+		const float log2_min = std::log2f( min );
+		const float log2_max = std::log2f( max );
+		const float log2_value = std::log2f( value );
+
+		return std::clamp( ( log2_value - log2_min ) / ( log2_max - log2_min ), 0.f, 1.f );
 	}
 
 	static float range_to_range( float value, float min, float max, float new_min, float new_max )
@@ -287,12 +304,12 @@ public:
 			if ( page == Page::KICK )
 			{
 				kick.buffer( kick_buffer_, audioIO().framesPerSecond(), 1 );
-				set_slider_value_r( Page::KICK, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+				set_slider_value_r( Page::KICK, tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 			}
 			else if ( page == Page::SNARE )
 			{
 				snare.buffer( snare_buffer_, audioIO().framesPerSecond(), 1 );
-				set_slider_value_r( Page::SNARE, range_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+				set_slider_value_r( Page::SNARE, tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 			}
 			else
 			{
@@ -556,7 +573,7 @@ public:
 		s += page_down() + page_up();
 		s /= static_cast< float >( Part::MAX );
 
-		bq_filter.freq( leap.y_pos_to_rate( leap.rh_pos().y ) * 1000.f );
+		// bq_filter.freq( leap.y_pos_to_rate( leap.rh_pos().y ) * 1000.f );
 		// s = bq_filter( s );
 
 		s = compress( s );
@@ -695,9 +712,9 @@ public:
 		const std::array< float, 4 > pad_2_tones = { Tone::A3, Tone::A3, Tone::C4, Tone::B3 };
 		const std::array< float, 4 > pad_3_tones = { Tone::G3, Tone::F3, Tone::G3, Tone::G3 };
 
-		pad1.rate( rate_to_range( get_slider_value_l( Page::PAD ), 1.f, pad_1_tones[ bar ] / Tone::C3 ) );
-		pad2.rate( rate_to_range( get_slider_value_l( Page::PAD ), 1.f, pad_2_tones[ bar ] / Tone::C3 ) );
-		pad3.rate( rate_to_range( get_slider_value_l( Page::PAD ), 1.f, pad_3_tones[ bar ] / Tone::C3 ) );
+		pad1.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_1_tones[ bar ] / Tone::C3 ) );
+		pad2.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_2_tones[ bar ] / Tone::C3 ) );
+		pad3.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_3_tones[ bar ] / Tone::C3 ) );
 
 		if ( page >= Page::FREE )
 		{
@@ -750,7 +767,7 @@ public:
 			},
 			{
 				{ 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0 },
-				{ 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1 },
+				{ 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1 },
 			},
 			{
 				{ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
@@ -781,7 +798,7 @@ public:
 		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
 		{
 			kick.range( std::min( 0.9f, get_slider_value_l( Page::KICK ) ), 0.15f );
-			kick.rate( rate_to_range( get_slider_value_r( Page::KICK ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+			kick.rate( rate_to_tone_rate( get_slider_value_r( Page::KICK ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 			kick.reset();
 			kick_env.reset();
 		}
@@ -789,7 +806,7 @@ public:
 		if ( snare_on[ snare_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
 		{
 			snare.range( std::min( 0.9f, get_slider_value_l( Page::SNARE ) ), 0.15f );
-			snare.rate( rate_to_range( get_slider_value_r( Page::SNARE ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+			snare.rate( rate_to_tone_rate( get_slider_value_r( Page::SNARE ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 			snare.reset();
 			snare_env.reset();
 		}
