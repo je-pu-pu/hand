@@ -4,6 +4,8 @@
 
 ofApp::ofApp( Hand& hand )
 	: hand_( hand )
+	, lh_point_size_( POINT_SIZE_MIN )
+	, rh_point_size_( POINT_SIZE_MIN )
 {
 	hand_.set_on_step( [this] ( bool on_beat, bool on_bar ) {
 		if ( on_bar )
@@ -14,6 +16,16 @@ ofApp::ofApp( Hand& hand )
 		{
 			bg_color_ = ofColor( 63, 63, 63 );
 		}
+
+		if ( audio().is_l_tapped() )
+		{
+			lh_point_size_ = POINT_SIZE_MAX;
+		}
+		if ( audio().is_r_tapped() )
+		{
+			rh_point_size_ = POINT_SIZE_MAX;
+		}
+
 	} );
 }
 
@@ -45,6 +57,9 @@ void ofApp::update()
 		bg_color_.g *= 0.85f;
 		bg_color_.b *= 0.85f;
 	}
+
+	lh_point_size_ = std::clamp( lh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
+	rh_point_size_ = std::clamp( rh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
 }
 
 //--------------------------------------------------------------
@@ -57,13 +72,29 @@ void ofApp::draw(){
 	float ly = ( 1.f - leap().y_pos_to_rate( leap().lh_pos().y ) ) * ofGetWindowHeight();
 
 	ofSetColor( leap().is_lh_valid() ? ( leap().is_l_slider_moving() ? ofColor::yellowGreen : ofColor::white ) : ofColor::red );
-	ofDrawCircle( ofPoint( lx, ly ), audio().is_lh_lead_position() ? 100.f : 50.f );
+
+	if ( audio().is_lh_lead_position() )
+	{
+		ofDrawCircle( ofPoint( lx, ly ), lh_point_size_ );
+	}
+	else
+	{
+		ofDrawRectRounded( ofRectangle( lx - lh_point_size_ / 2.f, ly - lh_point_size_ / 2.f, lh_point_size_, lh_point_size_ ), 5.f );
+	}
 
 	float rx = leap().x_pos_to_rate( leap().rh_pos().x ) * ofGetWindowWidth();
 	float ry = ( 1.f - leap().y_pos_to_rate( leap().rh_pos().y ) ) * ofGetWindowHeight();
 
 	ofSetColor( leap().is_rh_valid() ? ( leap().is_r_slider_moving() ? ofColor::yellowGreen : ofColor::white ) : ofColor::red );
-	ofDrawCircle( ofPoint( rx, ry ), audio().is_rh_lead_position() ? 100.f : 50.f );
+	
+	if ( audio().is_rh_lead_position() )
+	{
+		ofDrawCircle( ofPoint( rx, ry ), rh_point_size_ );
+	}
+	else
+	{
+		ofDrawRectRounded( ofRectangle( rx - rh_point_size_ / 2.f, ry - rh_point_size_ / 2.f, rh_point_size_, rh_point_size_ ), 5.f );
+	}
 
 	draw_text( HandAudio::get_page_name( audio().get_page() ), ofGetWindowHeight() / 4 );
 	draw_text( HandAudio::get_page_name( audio().get_next_page() ), ofGetWindowHeight() / 4 * 3 );

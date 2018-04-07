@@ -133,6 +133,9 @@ private:
 // 	bool is_on_beat_;					/// たった今  4 分音符の頭
 // 	bool is_on_bar_;					/// たった今小節の頭
 
+	bool is_l_tapped_ = false;			/// 現在の step で右タップされたかどうか？
+	bool is_r_tapped_ = false;			/// 現在の step で左タップされたかどうか？
+
 protected:
 	bool is_on_step() const { return is_on_step_; }
 
@@ -196,6 +199,9 @@ public:
 
 	Page get_page() const { return page; }
 	Page get_next_page() const { return static_cast< Page >( leap.page() ); }
+
+	bool is_l_tapped() const { return is_l_tapped_; }
+	bool is_r_tapped() const { return is_r_tapped_; }
 
 	bool is_recording() const
 	{
@@ -631,8 +637,6 @@ public:
 		{
 			step = ( step + 1 ) % 16;
 
-			on_step( ( step % 4 ) == 0, step == 0 );
-
 			if ( step == 0 )
 			{
 				bar = ( bar + 1 ) % 4;
@@ -680,6 +684,9 @@ public:
 		const bool l_tapped = leap.pop_l_tapped();
 		const bool r_tapped = leap.pop_r_tapped();
 
+		is_l_tapped_ = l_tapped;
+		is_r_tapped_ = r_tapped;
+
 		if ( l_tapped || r_tapped )
 		{
 			const int random_note_range = 5;
@@ -723,6 +730,7 @@ public:
 				bass.rate( bass.rate() * 2.f );
 			}
 		}
+
 		if ( page == Page::FINISH )
 		{
 			finished = true;
@@ -730,6 +738,8 @@ public:
 			kick.range( 0.f, 10.f );
 			kick.reset();
 		}
+
+		on_step( ( step % 4 ) == 0, step == 0 );
 	}
 
 	void on_step( bool, bool );
