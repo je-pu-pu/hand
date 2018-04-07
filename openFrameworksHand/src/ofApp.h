@@ -17,13 +17,14 @@ public:
 
 protected:
 	Hand& hand_;
-	ofTrueTypeFont font;
+	ofTrueTypeFont font_big_;
+	ofTrueTypeFont font_small_;
 
 	ofFloatColor bg_color_;
 	float lh_point_size_;
 	float rh_point_size_;
 
-	void draw_text( const std::string&, float ) const;
+	void draw_text( const ofTrueTypeFont&, const std::string&, float, float = 4.f ) const;
 
 	const HandAudioCallback& audio() const;
 	const LeapSoundController& leap() const;

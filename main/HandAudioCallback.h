@@ -98,9 +98,9 @@ private:
 
 	Page page = Page::TAP;
 	
-	int step = 0;		// 16 分音符のカウント ( 0 .. 15 )
-	int beat = 0;		//  4 分音符のカウント ( 0 ..  3 )
-	int bar = 0;		//  1 小節のカウント   ( 0 ..  3 )
+	int step_ = 0;		// 16 分音符のカウント ( 0 .. 15 )
+	int beat_ = 0;		//  4 分音符のカウント ( 0 ..  3 )
+	int bar_ = 0;		//  1 小節のカウント   ( 0 ..    )
 
 	bool finished = false;
 
@@ -202,6 +202,10 @@ public:
 
 	bool is_l_tapped() const { return is_l_tapped_; }
 	bool is_r_tapped() const { return is_r_tapped_; }
+
+	int get_step() const { return step_; }
+	int get_beat() const { return beat_; }
+	int get_bar() const { return bar_;  }
 
 	bool is_recording() const
 	{
@@ -495,7 +499,7 @@ public:
 			// ベースのボリュームが左右の手の距離によって変わる
 			if ( leap.hand_count() == 2 )
 			{
-				bass_volume.target_value() = std::clamp( leap.lh_pos().distanceTo( leap.rh_pos() ) / 1000.f, 0.f, 1.f);
+				bass_volume.target_value() = std::clamp( ( leap.lh_pos().distanceTo( leap.rh_pos() )  - 200.f ) / 1000.f, 0.f, 1.f );
 			}
 
 			bass_volume.chase();
@@ -633,19 +637,28 @@ public:
 	{
 		is_on_step_ = true;
 
-		if ( page != Page::FINISH || step < 15 )
+		if ( page != Page::FINISH || step_ < 15 )
 		{
-			step = ( step + 1 ) % 16;
+			step_ = ( step_ + 1 ) % 16;
+			beat_ = step_ / 4;
 
-			if ( step == 0 )
+			if ( step_ == 0 )
 			{
-				bar = ( bar + 1 ) % 4;
+				bar_++;
+			}
+		}
+
+		if ( page == Page::CLIMAX && ( bar_ / 4 % 4 ) == 3 && ( bar_ % 4 ) == 0 && step_ == 1 )
+		{
+			if ( get_slider_value_r( page ) >= 1.f )
+			{
+				leap.increment_page();
 			}
 		}
 
 		// 1 小節目の 1 拍目のみでページ変更を行う
 		// ( 2 ～ 4 小節目でページ変更のジェスチャーした場合でも 1 小節目にページを変更する )
-		if ( bar == 0 && step == 0 || page == Page::FINISH )
+		if ( ( bar_ % 4 ) == 0 && step_ == 0 || page == Page::FINISH )
 		{
 			// ページの変更
 			while ( get_page_index() < leap.page() )
@@ -661,13 +674,13 @@ public:
 			}
 		}
 
-		if ( page == Page::FINISH && step > 0 )
+		if ( page == Page::FINISH && step_ > 0 )
 		{
 			return;
 		}
 
 		//
-		if ( step == 0 )
+		if ( step_ == 0 )
 		{
 			bass_env.reset();
 		}
@@ -709,7 +722,7 @@ public:
 
 		// const std::array< float, 4 > bass_rate = { Tone::C3, Tone::E3, Tone::F3, Tone::G3 };
 		const std::array< float, 4 > bass_rate = { Tone::F1, Tone::G1, Tone::A1, Tone::C2 };
-		bass.rate( page >= Page::DEMO ? bass_rate[ bar ] / Tone::C3 : 1.f );
+		bass.rate( page >= Page::DEMO ? bass_rate[ bar_ % 4 ] / Tone::C3 : 1.f );
 
 		// const std::array< float, 4 > pad_1_tones = { Tone::C4, Tone::C4, Tone::A3, Tone::B3 };
 		// const std::array< float, 4 > pad_2_tones = { Tone::G3, Tone::G3, Tone::F3, Tone::G3 };
@@ -719,13 +732,13 @@ public:
 		const std::array< float, 4 > pad_2_tones = { Tone::A3, Tone::A3, Tone::C4, Tone::B3 };
 		const std::array< float, 4 > pad_3_tones = { Tone::G3, Tone::F3, Tone::G3, Tone::G3 };
 
-		pad1.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_1_tones[ bar ] / Tone::C3 ) );
-		pad2.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_2_tones[ bar ] / Tone::C3 ) );
-		pad3.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_3_tones[ bar ] / Tone::C3 ) );
+		pad1.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_1_tones[ bar_ % 4 ] / Tone::C3 ) );
+		pad2.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_2_tones[ bar_ % 4 ] / Tone::C3 ) );
+		pad3.rate( rate_to_tone_rate( get_slider_value_l( Page::PAD ), 1.f, pad_3_tones[ bar_ % 4 ] / Tone::C3 ) );
 
 		if ( page >= Page::FREE )
 		{
-			if ( step / 2 % 2 == 1 )
+			if ( step_ / 2 % 2 == 1 )
 			{
 				bass.rate( bass.rate() * 2.f );
 			}
@@ -739,7 +752,7 @@ public:
 			kick.reset();
 		}
 
-		on_step( ( step % 4 ) == 0, step == 0 );
+		on_step( ( step_ % 4 ) == 0, step_ == 0 );
 	}
 
 	void on_step( bool, bool );
@@ -800,12 +813,12 @@ public:
 			},
 		};
 
-		const int is_fill_in = bar < 3 ? 0 : 1;
+		const int is_fill_in = ( bar_ % 4 ) < 3 ? 0 : 1;
 
 		const std::array< int, PAGES > kick_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
 		const std::array< int, PAGES > snare_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
 
-		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
+		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step_ ] )
 		{
 			kick.range( std::min( 0.9f, get_slider_value_l( Page::KICK ) ), 0.15f );
 			kick.rate( rate_to_tone_rate( get_slider_value_r( Page::KICK ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
@@ -813,7 +826,7 @@ public:
 			kick_env.reset();
 		}
 
-		if ( snare_on[ snare_pattern[ get_page_index() ] ][ is_fill_in ][ step ] )
+		if ( snare_on[ snare_pattern[ get_page_index() ] ][ is_fill_in ][ step_ ] )
 		{
 			snare.range( std::min( 0.9f, get_slider_value_l( Page::SNARE ) ), 0.15f );
 			snare.rate( rate_to_tone_rate( get_slider_value_r( Page::SNARE ), RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
@@ -821,7 +834,7 @@ public:
 			snare_env.reset();
 		}
 
-		const float bright_tone = bright_phrase[ page == Page::FINISH ? 2 : ( page >= Page::FREE ? 1 : 0 ) ][ is_fill_in ][ step ];
+		const float bright_tone = bright_phrase[ page == Page::FINISH ? 2 : ( page >= Page::FREE ? 1 : 0 ) ][ is_fill_in ][ step_ ];
 
 		if ( bright_tone  != Tone::__ )
 		{
@@ -857,8 +870,8 @@ public:
 		{
 			if ( page == Page::BASS )
 			{
-				step = 0;
-				bar = 0;
+				step_ = 0;
+				bar_ = 0;
 			}
 
 			if ( page == Page::CLIMAX )

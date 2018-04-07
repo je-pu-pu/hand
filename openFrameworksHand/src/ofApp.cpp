@@ -2,6 +2,8 @@
 #include "../../main/HandAudioCallback.h"
 #include "ofApp.h"
 
+#include <boost/format.hpp>
+
 ofApp::ofApp( Hand& hand )
 	: hand_( hand )
 	, lh_point_size_( POINT_SIZE_MIN )
@@ -34,12 +36,13 @@ void ofApp::setup()
 {
 	ofSetFrameRate( 60 );
 
-	font.load( "mplus-1m-bold.ttf", 320, true, false, true );
+	font_big_.load( "mplus-1m-bold.ttf", 300, true, false, true );
+	font_small_.load( "mplus-1m-bold.ttf",  100, true, false, true );
 
 	/*
 	for ( int n = 0; n < 9; n++ )
 	{
-		std::cout << n << ":" << font.stringWidth( std::to_string( n ) ) << std::endl;
+		std::cout << n << ":" << font_big_.stringWidth( std::to_string( n ) ) << std::endl;
 	}
 	*/
 }
@@ -65,8 +68,6 @@ void ofApp::update()
 //--------------------------------------------------------------
 void ofApp::draw(){
 	ofClear( bg_color_ );
-
-	// std::string s = std::to_string( ofGetFrameRate() );
 
 	float lx = leap().x_pos_to_rate( leap().lh_pos().x ) * ofGetWindowWidth();
 	float ly = ( 1.f - leap().y_pos_to_rate( leap().lh_pos().y ) ) * ofGetWindowHeight();
@@ -96,8 +97,19 @@ void ofApp::draw(){
 		ofDrawRectRounded( ofRectangle( rx - rh_point_size_ / 2.f, ry - rh_point_size_ / 2.f, rh_point_size_, rh_point_size_ ), 5.f );
 	}
 
-	draw_text( HandAudio::get_page_name( audio().get_page() ), ofGetWindowHeight() / 4 );
-	draw_text( HandAudio::get_page_name( audio().get_next_page() ), ofGetWindowHeight() / 4 * 3 );
+	draw_text( font_big_, HandAudio::get_page_name( audio().get_page() ), ofGetWindowHeight() / 4 );
+	draw_text( font_big_, HandAudio::get_page_name( audio().get_next_page() ), ofGetWindowHeight() / 4 * 3 );
+
+	const std::string data_text = (
+		boost::format( "%0.3f    %d-%d-%d    %0.3f " )
+			% leap().l_slider( leap().page() )
+			% ( ( audio().get_bar() / 4 % 4 ) + 1 )
+			% ( ( audio().get_bar() % 4 ) + 1 )
+			% ( audio().get_beat() + 1 )
+			% leap().r_slider( leap().page() )
+	).str();
+
+	draw_text( font_small_, data_text, ofGetWindowHeight() / 2 );
 
 	ofDrawBitmapStringHighlight( std::to_string( ofGetFrameRate() ), 0, 11 );
 }
@@ -112,7 +124,7 @@ const LeapSoundController& ofApp::leap() const
 	return hand_.leap();
 }
 
-void ofApp::draw_text( const std::string& s, float y ) const
+void ofApp::draw_text( const ofTrueTypeFont& font, const std::string& s, float y, float border_w ) const
 {
 	ofColor font_color( 0.f );
 	ofColor border_color( 255.f, 255.f, 255.f, 255.f );
@@ -121,11 +133,9 @@ void ofApp::draw_text( const std::string& s, float y ) const
 	const float fh = font.stringHeight( s );
 
 	const float fx = ( ofGetWindowWidth() - fw ) / 2;
-	const float fy = y + fh / 2;
+	const float fy = y + font.getLineHeight() / 2 + font.getDescenderHeight();
 
 	ofSetColor( border_color );
-
-	const float border_w = 4.f;
 
 	for ( int y = -border_w; y <= border_w; y++ )
 	{

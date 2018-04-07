@@ -194,6 +194,7 @@ public:
 	}
 
 	int page() const { return page_; }
+	void set_page( int page ) { page_ = page; }
 
 	bool decrement_page()
 	{
