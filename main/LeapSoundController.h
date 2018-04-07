@@ -50,7 +50,7 @@ protected:
 		l_slider_start_value_ = l_slider_[ page_ ];
 		l_slider_start_hand_y_ = y;
 
-		std::cout << "L Slider : Start" << std::endl;
+		// std::cout << "L Slider : Start" << std::endl;
 	}
 
 	void stop_l_slider_moving()
@@ -59,7 +59,7 @@ protected:
 		{
 			is_l_slider_moving_ = false;
 
-			std::cout << "L Slider : Stop" << std::endl;
+			// std::cout << "L Slider : Stop" << std::endl;
 		}
 	}
 
@@ -69,7 +69,7 @@ protected:
 		r_slider_start_value_ = r_slider_[ page_ ];
 		r_slider_start_hand_y_ = y;
 
-		std::cout << "R Slider : Start" << std::endl;
+		// std::cout << "R Slider : Start" << std::endl;
 	}
 
 	void stop_r_slider_moving()
@@ -78,7 +78,7 @@ protected:
 		{
 			is_r_slider_moving_ = false;
 
-			std::cout << "R Slider : Stop" << std::endl;
+			// std::cout << "R Slider : Stop" << std::endl;
 		}
 	}
 
@@ -153,7 +153,7 @@ public:
 
 	float x_pos_to_rate( float x ) const
 	{
-		const float max_x = 250.f;
+		const float max_x = 200.f;
 
 		float rate = ( x + max_x ) / ( max_x * 2.f );
 
@@ -172,7 +172,7 @@ public:
 	float y_pos_to_rate( float y ) const
 	{
 		const float min_y = 200.f;
-		const float max_y = 1000.f;
+		const float max_y = 800.f;
 
 		return std::clamp( ( y - min_y ) / ( max_y - min_y ), 0.f, 1.f );
 	}

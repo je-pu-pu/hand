@@ -18,7 +18,10 @@ ofApp::ofApp( Hand& hand )
 }
 
 //--------------------------------------------------------------
-void ofApp::setup(){
+void ofApp::setup()
+{
+	ofSetFrameRate( 60 );
+
 	font.load( "mplus-1m-bold.ttf", 320, true, false, true );
 
 	/*
@@ -64,6 +67,8 @@ void ofApp::draw(){
 
 	draw_text( HandAudio::get_page_name( audio().get_page() ), ofGetWindowHeight() / 4 );
 	draw_text( HandAudio::get_page_name( audio().get_next_page() ), ofGetWindowHeight() / 4 * 3 );
+
+	ofDrawBitmapStringHighlight( std::to_string( ofGetFrameRate() ), 0, 11 );
 }
 
 const HandAudioCallback& ofApp::audio() const
