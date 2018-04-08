@@ -136,6 +136,9 @@ private:
 	bool is_l_tapped_ = false;			/// 現在の step で右タップされたかどうか？
 	bool is_r_tapped_ = false;			/// 現在の step で左タップされたかどうか？
 
+	float mic_volume_ = 0.3f;			/// マイクの出力ボリューム
+	float volume_at_recording_ = 0.2f;	/// 録音時の出力ボリューム
+
 protected:
 	bool is_on_step() const { return is_on_step_; }
 
@@ -206,6 +209,9 @@ public:
 	int get_step() const { return step_; }
 	int get_beat() const { return beat_; }
 	int get_bar() const { return bar_;  }
+
+	float get_mic_volume() const { return mic_volume_; }
+	float get_volume_at_recording() const { return volume_at_recording_; }
 
 	bool is_recording() const
 	{
@@ -293,6 +299,25 @@ public:
 		{
 			leap.move_r_slider_force( +speed );
 		}
+
+		if ( GetAsyncKeyState( 'Z' ) & 0b1000000000000000 )
+		{
+			mic_volume_ = std::clamp( mic_volume_ - 0.001f, 0.f, 2.f );
+		}
+		if ( GetAsyncKeyState( 'X' ) & 0b1000000000000000 )
+		{
+			mic_volume_ = std::clamp( mic_volume_ + 0.001f, 0.f, 2.f );
+		}
+
+		if ( GetAsyncKeyState( 'C' ) & 0b1000000000000000 )
+		{
+			volume_at_recording_ = std::clamp( volume_at_recording_ - 0.001f, 0.f, 1.f );
+		}
+		if ( GetAsyncKeyState( 'V' ) & 0b1000000000000000 )
+		{
+			volume_at_recording_ = std::clamp( volume_at_recording_ + 0.001f, 0.f, 1.f );
+		}
+
 
 		recording_key_state_ <<= 1;
 		recording_key_state_ |= static_cast< bool >( GetAsyncKeyState( 'R' ) & 0b1000000000000000 );
@@ -569,9 +594,9 @@ public:
 
 		float s = 0.f;
 			
-		s +=   kick() * get_part_volume( Part::KICK   ) *  kick_env();
+		s +=   kick() * get_part_volume( Part::KICK   ) * kick_env();
 		s +=  snare() * get_part_volume( Part::SNARE  ) * snare_env();
-		s +=   bass() * get_part_volume( Part::BASS   ) * bass_volume.value() * bass_env(); // * ( step % 4 / 2 );
+		s +=   bass() * get_part_volume( Part::BASS   ) * bass_volume.value() * bass_env();
 		s += lead_l() * get_part_volume( Part::LEAD_L ) * lead_l_volume.value();
 		s += lead_r() * get_part_volume( Part::LEAD_R ) * lead_r_volume.value();
 		s +=    tap() * get_part_volume( Part::TAP    ) * tap_env();
@@ -593,8 +618,8 @@ public:
 
 		if ( is_recording() || is_speaking_mode() )
 		{
-			s *= 0.2f;
-			s += io.in( 0, io_step ) * 0.3f;
+			s *= volume_at_recording_;
+			s += io.in( 0, io_step ) * mic_volume_;
 		}
 
 		io.out( 0 ) = s;

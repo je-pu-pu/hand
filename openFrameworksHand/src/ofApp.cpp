@@ -38,13 +38,6 @@ void ofApp::setup()
 
 	font_big_.load( "mplus-1m-bold.ttf", 300, true, false, true );
 	font_small_.load( "mplus-1m-bold.ttf",  100, true, false, true );
-
-	/*
-	for ( int n = 0; n < 9; n++ )
-	{
-		std::cout << n << ":" << font_big_.stringWidth( std::to_string( n ) ) << std::endl;
-	}
-	*/
 }
 
 //--------------------------------------------------------------
@@ -112,6 +105,8 @@ void ofApp::draw(){
 	draw_text( font_small_, data_text, ofGetWindowHeight() / 2 );
 
 	ofDrawBitmapStringHighlight( std::to_string( ofGetFrameRate() ), 0, 11 );
+	ofDrawBitmapStringHighlight( std::to_string( audio().get_mic_volume() ), 0, 31 );
+	ofDrawBitmapStringHighlight( std::to_string( audio().get_volume_at_recording() ), 0, 51 );
 }
 
 const HandAudioCallback& ofApp::audio() const
