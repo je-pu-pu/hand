@@ -480,9 +480,12 @@ protected:
 		}
 		else
 		{
-			if ( increment_page() )
+			if ( page() < PAGES - 2 )
 			{
-				swipe_stop_until_ = now + std::chrono::milliseconds( 500 );
+				if ( increment_page() )
+				{
+					swipe_stop_until_ = now + std::chrono::milliseconds( 500 );
+				}
 			}
 		}
 

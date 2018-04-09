@@ -104,6 +104,13 @@ void ofApp::draw(){
 
 	draw_text( font_small_, data_text, ofGetWindowHeight() / 2 );
 
+	auto now = std::chrono::system_clock::to_time_t( std::chrono::system_clock::now() );
+	auto local_time = std::localtime( & now );
+	std::stringstream time;
+	time  << std::put_time( local_time, "%H:%M:%S " );
+
+	draw_text( font_small_, time.str(), ( font_small_.getAscenderHeight() / 2 ) );
+
 	ofDrawBitmapStringHighlight( std::to_string( ofGetFrameRate() ), 0, 11 );
 	ofDrawBitmapStringHighlight( std::to_string( audio().get_mic_volume() ), 0, 31 );
 	ofDrawBitmapStringHighlight( std::to_string( audio().get_volume_at_recording() ), 0, 51 );
