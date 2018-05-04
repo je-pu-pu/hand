@@ -113,7 +113,7 @@ void ofApp::draw(){
 
 	ofDrawBitmapStringHighlight( std::to_string( ofGetFrameRate() ), 0, 11 );
 	ofDrawBitmapStringHighlight( std::to_string( audio().get_mic_volume() ), 0, 31 );
-	ofDrawBitmapStringHighlight( std::to_string( audio().get_volume_at_recording() ), 0, 51 );
+	ofDrawBitmapStringHighlight( std::to_string( audio().get_bgm_volume() ), 0, 51 );
 }
 
 const HandAudioCallback& ofApp::audio() const

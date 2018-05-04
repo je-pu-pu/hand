@@ -28,6 +28,9 @@ public:
 	const float RHYTHM_RATE_MAX = 2.f;
 	const float area_threashold_z = 100.f;
 
+	constexpr static float DEFAULT_MIC_VOLUME = 0.1f;
+	constexpr static float DEFAULT_BGM_VOLUME = 0.1f;
+
 	enum class Page
 	{
 		TAP = 0,	// キータップのデモ
@@ -136,8 +139,8 @@ private:
 	bool is_l_tapped_ = false;			/// 現在の step で右タップされたかどうか？
 	bool is_r_tapped_ = false;			/// 現在の step で左タップされたかどうか？
 
-	float mic_volume_ = 0.3f;			/// マイクの出力ボリューム
-	float volume_at_recording_ = 0.2f;	/// 録音時の出力ボリューム
+	float mic_volume_ = DEFAULT_MIC_VOLUME;		/// マイクの出力ボリューム
+	float bgm_volume_ = DEFAULT_BGM_VOLUME;		/// 録音時の出力ボリューム
 
 protected:
 	bool is_on_step() const { return is_on_step_; }
@@ -211,7 +214,10 @@ public:
 	int get_bar() const { return bar_;  }
 
 	float get_mic_volume() const { return mic_volume_; }
-	float get_volume_at_recording() const { return volume_at_recording_; }
+	float get_bgm_volume() const { return bgm_volume_; }
+
+	void set_mic_volume( float v ) { mic_volume_ = std::clamp( v, 0.f, 1.f ); }
+	void set_bgm_volume( float v ) { bgm_volume_ = std::clamp( v, 0.f, 1.f ); }
 
 	bool is_recording() const
 	{
@@ -302,22 +308,21 @@ public:
 
 		if ( GetAsyncKeyState( 'Z' ) & 0b1000000000000000 )
 		{
-			mic_volume_ = std::clamp( mic_volume_ - 0.001f, 0.f, 2.f );
+			set_mic_volume( mic_volume_ - 0.001f );
 		}
 		if ( GetAsyncKeyState( 'X' ) & 0b1000000000000000 )
 		{
-			mic_volume_ = std::clamp( mic_volume_ + 0.001f, 0.f, 2.f );
+			set_mic_volume( mic_volume_ + 0.001f );
 		}
 
 		if ( GetAsyncKeyState( 'C' ) & 0b1000000000000000 )
 		{
-			volume_at_recording_ = std::clamp( volume_at_recording_ - 0.001f, 0.f, 1.f );
+			set_bgm_volume( get_bgm_volume() - 0.001f );
 		}
 		if ( GetAsyncKeyState( 'V' ) & 0b1000000000000000 )
 		{
-			volume_at_recording_ = std::clamp( volume_at_recording_ + 0.001f, 0.f, 1.f );
+			set_bgm_volume( get_bgm_volume() + 0.001f );
 		}
-
 
 		recording_key_state_ <<= 1;
 		recording_key_state_ |= static_cast< bool >( GetAsyncKeyState( 'R' ) & 0b1000000000000000 );
@@ -414,7 +419,7 @@ public:
 
 		buf.resize( audioIO().framesPerSecond() );
 
-		for ( int n = 0; n < buf.size(); n++ )
+		for ( auto n = 0; n < buf.size(); n++ )
 		{
 			buf[ n ] = s();
 		}
@@ -431,7 +436,7 @@ public:
 		float max = 0.f;
 		float freq = 0.f;
 
-		for ( int n = 1; n < buf.size(); n += 2 )
+		for ( auto n = 1; n < buf.size(); n += 2 )
 		{
 			const float f = static_cast< float >( n ) * static_cast< float >( audioIO().framesPerSecond() ) / buf.size();
 
@@ -618,8 +623,8 @@ public:
 
 		if ( is_recording() || is_speaking_mode() )
 		{
-			s *= volume_at_recording_;
-			s += io.in( 0, io_step ) * mic_volume_;
+			s *= get_bgm_volume();
+			s += io.in( 0, io_step ) * get_mic_volume();
 		}
 
 		io.out( 0 ) = s;

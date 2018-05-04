@@ -108,6 +108,7 @@ public:
 		}
 	}
 
+	/// @todo Hand オブジェクトを返すようにする
 	bool is_lh_valid() const { return lh_.isValid(); }
 	bool is_rh_valid() const { return rh_.isValid(); }
 
@@ -116,6 +117,9 @@ public:
 
 	bool is_l_slider_moving() const { return is_l_slider_moving_; }
 	bool is_r_slider_moving() const { return is_r_slider_moving_; }
+
+	// bool is_lh_grabbing() const { return is_lh_grabbing_; }
+	// bool is_rh_grabbing() const { return is_rh_grabbing_; }
 
 	const float l_slider( int page ) const
 	{

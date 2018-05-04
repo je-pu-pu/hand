@@ -53,8 +53,8 @@ public:
 
 		if ( config_.load_file( "./config.txt" ) )
 		{
-			in = config_.get( "input_device_no", 0 );
-			out = config_.get( "output_device_no", 0 );
+			in = config_.get( "device.input_device_no", 0 );
+			out = config_.get( "device.output_device_no", 0 );
 		}
 		else
 		{
@@ -64,8 +64,8 @@ public:
 			std::cout << "output device no : ";
 			std::cin >> out;
 
-			config_.set( "input_device_no", in );
-			config_.set( "output_device_no", out );
+			config_.set( "device.input_device_no", in );
+			config_.set( "device.output_device_no", out );
 		}
 
 		controller_.addListener( leap_ );
@@ -76,6 +76,8 @@ public:
 		// std::cout << controller.config().getFloat( "Gesture.Swipe.MinLength" ) << std::endl;
 
 		audio_callback_ = std::make_unique< HandAudioCallback >( *this, in, out, leap_ );
+		audio_callback_->set_mic_volume( config_.get( "hand.mic_volume", HandAudioCallback::DEFAULT_MIC_VOLUME ) );
+		audio_callback_->set_bgm_volume( config_.get( "hand.bgm_volume", HandAudioCallback::DEFAULT_BGM_VOLUME ) );
 
 		server_thread_ = start_server();
 
@@ -96,6 +98,8 @@ public:
 
 		controller_.removeListener( leap_ );
 
+		config_.set( "hand.mic_volume", audio_callback_->get_mic_volume() );
+		config_.set( "hand.bgm_volume", audio_callback_->get_bgm_volume() );
 		config_.save_file( "./config.txt" );
 
 		server_thread_.detach();
