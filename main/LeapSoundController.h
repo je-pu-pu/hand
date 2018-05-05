@@ -12,6 +12,97 @@ class LeapSoundController : public Leap::Listener
 public:
 	static const int PAGES = 11;
 
+	class Hand
+	{
+	public:
+		enum class Shape
+		{
+			ROCK = 0,	// グー
+			SCISSORS,	// チョキ
+			PAPER,		// パー
+
+			THUMBS_UP,	// 親指を立てる
+			INDEX,		// 人差し指を立てる
+			THREE,		// 3
+			FOX,		// きつね
+
+			NONE,		// なし
+		};
+
+		constexpr static unsigned int shape_bits_[] = {
+			0b00000,
+			0b00110,
+			0b11111,
+
+			0b00001,
+			0b00010,
+			0b01110,
+			0b10010,
+
+			0xFFFF,
+		};
+
+		constexpr static const char* shape_names_[] = {
+			"ROCK",
+			"SCISSORS",
+			"PAPER",
+
+			"THUMBS_UP",
+			"INDEX",
+			"THREE",
+			"FOX",
+
+			"NONE",
+		};
+
+	private:
+		Shape shape_ = Shape::NONE;
+
+	protected:
+		void update_shape_by_leap_hand( const Leap::Hand hand )
+		{
+			shape_ = Shape::NONE;
+
+			int finger_bit = 0;
+
+			for ( const auto& f : hand.fingers() )
+			{
+				if ( ! f.isValid() )
+				{
+					return;
+				}
+
+				if ( f.isExtended() )
+				{
+					finger_bit |= 1 << f.type();
+				}
+			}
+
+			for ( int n = 0; n < static_cast< int >( Shape::NONE ); n++ )
+			{
+				if ( finger_bit == shape_bits_[ n ] )
+				{
+					shape_ = static_cast< Shape >( n );
+					return;
+				}
+			}
+		}
+
+	public:
+		void reset()
+		{
+			shape_ = Shape::NONE;
+		}
+
+		void update_by_leap_hand( const Leap::Hand hand )
+		{
+			update_shape_by_leap_hand( hand );
+		}
+
+		Shape get_shape() const { return shape_; }
+		const char* get_shape_name() const { return shape_names_[ static_cast< int >( shape_ ) ]; }
+	};
+
 private:
 	int page_ = 0;
 	bool page_incremented_ = false;
@@ -26,8 +117,11 @@ private:
 	bool l_tapped_ = false;
 	bool r_tapped_ = false;
 
-	Leap::Hand lh_;						/// 最新の左手
-	Leap::Hand rh_;						/// 最新の右手
+	Hand lh_;							/// 左手
+	Hand rh_;							/// 右手
+
+	Leap::Hand leap_lh_;				/// 最新の LeapMotion の左手
+	Leap::Hand leap_rh_;				/// 最新の LeapMotion の右手
 
 	Leap::Vector lh_pos_;				/// 最後の左手の位置
 	Leap::Vector rh_pos_;				/// 最後の右手の位置
@@ -108,18 +202,18 @@ public:
 		}
 	}
 
+	const Hand& get_lh() const { return lh_; }
+	const Hand& get_rh() const { return rh_; }
+
 	/// @todo Hand オブジェクトを返すようにする
-	bool is_lh_valid() const { return lh_.isValid(); }
-	bool is_rh_valid() const { return rh_.isValid(); }
+	bool is_lh_valid() const { return leap_lh_.isValid(); }
+	bool is_rh_valid() const { return leap_rh_.isValid(); }
 
 	const Leap::Vector& lh_pos() const { return lh_pos_; }
 	const Leap::Vector& rh_pos() const { return rh_pos_; }
 
 	bool is_l_slider_moving() const { return is_l_slider_moving_; }
 	bool is_r_slider_moving() const { return is_r_slider_moving_; }
-
-	// bool is_lh_grabbing() const { return is_lh_grabbing_; }
-	// bool is_rh_grabbing() const { return is_rh_grabbing_; }
 
 	const float l_slider( int page ) const
 	{
@@ -316,8 +410,11 @@ public:
 
 		auto hands = frame.hands();
 
-		lh_ = Leap::Hand::invalid();
-		rh_ = Leap::Hand::invalid();
+		leap_lh_ = Leap::Hand::invalid();
+		leap_rh_ = Leap::Hand::invalid();
+
+		lh_.reset();
+		rh_.reset();
 
 		for ( auto hl = hands.begin(); hl != hands.end(); ++hl )
 		{
@@ -339,17 +436,12 @@ public:
 				continue;
 			}
 
-			const auto fingers = hand.fingers();
-
-			for ( auto fl = fingers.begin(); fl != fingers.end(); ++fl )
-			{
-				const auto finger = *fl;
-			}
-
 			if ( hand.isLeft() )
 			{
-				lh_ = hand;
+				leap_lh_ = hand;
 				lh_pos_ = hand.wristPosition();
+
+				lh_.update_by_leap_hand( leap_lh_ );
 
 				if ( ! is_l_slider_moving_ && hand.pinchStrength() >= 1.f )
 				{
@@ -364,8 +456,10 @@ public:
 			}
 			else if ( hand.isRight() )
 			{
-				rh_ = hand;
+				leap_rh_ = hand;
 				rh_pos_ = hand.wristPosition();
+
+				rh_.update_by_leap_hand( leap_rh_ );
 
 				if ( ! is_r_slider_moving_ && hand.pinchStrength() >= 1.f )
 				{

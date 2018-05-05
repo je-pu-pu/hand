@@ -184,7 +184,6 @@
   <ItemGroup>
     <ClCompile Include="..\main\Config.cpp" />
     <ClCompile Include="..\main\HandAudioCallback.cpp" />
-    <ClCompile Include="..\main\Tone.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ofApp.cpp" />
   </ItemGroup>

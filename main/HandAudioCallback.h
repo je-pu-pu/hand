@@ -24,6 +24,8 @@ class Hand;
 class HandAudioCallback : public AudioCallback
 {
 public:
+	typedef LeapSoundController Controller;
+
 	const float RHYTHM_RATE_MIN = 0.5f;
 	const float RHYTHM_RATE_MAX = 2.f;
 	const float area_threashold_z = 100.f;
@@ -95,6 +97,23 @@ public:
 	// BPM
 	int get_bpm() const { return 120; }
 
+public:
+	class OneShotPlayer : public gam::SamplePlayer<>
+	{
+	public:
+		bool load( const char * pathToSoundFile )
+		{
+			auto result = gam::SamplePlayer<>::load( pathToSoundFile );
+			
+			if ( result )
+			{
+				pos( max() - 1.0 );
+			}
+
+			return result;
+		}
+	};
+
 private:
 	Hand& hand;
 	LeapSoundController& leap;
@@ -109,8 +128,10 @@ private:
 
 	gam::Accum<> timer;
 
-	gam::SamplePlayer<> tap, page_down, page_up, kick, snare;
+	OneShotPlayer tap, page_down, page_up, kick, snare;
 	gam::AD<> tap_env, kick_env, snare_env;
+
+	OneShotPlayer rock_, scissors_, paper_, thumbs_up_, fox_, sound_1_, sound_2_, sound_3_;
 
 	gam::SamplePlayer < float, gam::ipl::Cubic, gam::phsInc::Loop > bass, lead_l, lead_r, pad1, pad2, pad3;
 	gam::ADSR<> bass_env;
@@ -142,7 +163,14 @@ private:
 	float mic_volume_ = DEFAULT_MIC_VOLUME;		/// マイクの出力ボリューム
 	float bgm_volume_ = DEFAULT_BGM_VOLUME;		/// 録音時の出力ボリューム
 
+	LeapSoundController::Hand current_step_lh_;	/// 現在のステップの左手
+	LeapSoundController::Hand current_step_rh_;	/// 現在のステップの右手
+	LeapSoundController::Hand last_step_lh_;	/// 前のステップの左手
+	LeapSoundController::Hand last_step_rh_;	/// 前のステップの右手
+
 protected:
+	const LeapSoundController& get_controller() const { return leap; }
+
 	bool is_on_step() const { return is_on_step_; }
 
 	float get_slider_value_l( Page page ) const { return leap.l_slider( static_cast< int >( page ) ); }
@@ -180,12 +208,7 @@ public:
 
 		page_down.load( "page_down.wav" );
 		page_up.load( "page_up.wav" );
-		
 		tap.load( "tap.wav" );
-		
-		page_down.phase( 0.99 );
-		page_up.phase( 0.99 );
-		tap.phase( 0.99 );
 
 		kick.load( "kick.wav" );
 		snare.buffer( kick );
@@ -201,6 +224,16 @@ public:
 
 		set_slider_value_r( Page::KICK,  tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 		set_slider_value_r( Page::SNARE, tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
+
+		rock_.load( "rock.wav" );
+		scissors_.load( "scissors.wav" );
+		paper_.load( "paper.wav" );
+		thumbs_up_.load( "thumbs_up.wav" );
+		fox_.load( "fox.wav" );
+
+		sound_1_.load( "1.wav" );
+		sound_2_.load( "2.wav" );
+		sound_3_.load( "3.wav" );
 	}
 
 	Page get_page() const { return page; }
@@ -510,7 +543,13 @@ public:
 
 			if ( timer() )
 			{
+				current_step_lh_ = get_controller().get_lh();
+				current_step_rh_ = get_controller().get_rh();
+
 				on_note();
+
+				last_step_lh_ = current_step_lh_;
+				last_step_rh_ = current_step_rh_;
 			}
 
 			update_bass();
@@ -605,6 +644,8 @@ public:
 		s += lead_l() * get_part_volume( Part::LEAD_L ) * lead_l_volume.value();
 		s += lead_r() * get_part_volume( Part::LEAD_R ) * lead_r_volume.value();
 		s +=    tap() * get_part_volume( Part::TAP    ) * tap_env();
+
+		s += rock_() + scissors_() + paper_() + thumbs_up_() + fox_()  + sound_1_() + sound_2_() + sound_3_();
 
 		const float pad = ( pad1() + pad2() + pad3() ) / 3.f;
 		s += pad      * get_part_volume( Part::PAD );
@@ -709,6 +750,8 @@ public:
 			return;
 		}
 
+		play_sound_by_hand_shape();
+
 		//
 		if ( step_ == 0 )
 		{
@@ -787,6 +830,25 @@ public:
 
 	void on_step( bool, bool );
 	
+	void play_sound_by_hand_shape()
+	{
+		if ( current_step_rh_.get_shape() != last_step_rh_.get_shape() && current_step_rh_.get_shape() != Controller::Hand::Shape::NONE )
+		{
+			constexpr const auto shape_count = static_cast< int >( Controller::Hand::Shape::NONE );
+			static const std::array< gam::SamplePlayer<>*, shape_count > players = {
+				// & rock_, & scissors_, & paper_, & thumbs_up_, & index_, & fox_
+				nullptr, & sound_2_, nullptr, nullptr, & sound_1_, & sound_3_, & fox_
+			};
+
+			auto* player = players[ static_cast< int >( current_step_rh_.get_shape() ) ];
+
+			if ( player )
+			{
+				player->reset();
+			}
+		}
+	}
+
 
 	void update_sequencer()
 	{

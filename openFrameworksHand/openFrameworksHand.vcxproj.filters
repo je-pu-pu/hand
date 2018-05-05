@@ -7,9 +7,6 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\main\Tone.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\main\Config.cpp">
       <Filter>src</Filter>
     </ClCompile>

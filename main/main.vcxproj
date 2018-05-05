@@ -136,7 +136,6 @@
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="HandAudioCallback.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Tone.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AudioCallback.h" />
