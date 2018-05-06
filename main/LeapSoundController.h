@@ -10,7 +10,8 @@
 class LeapSoundController : public Leap::Listener
 {
 public:
-	static const int PAGES = 11;
+	/// @todo HandAudioCallback::Page::MAX ‚ÆŽ©“®“I‚Éˆê’v‚³‚¹‚é
+	static const int PAGES = 13;
 
 	class Hand
 	{

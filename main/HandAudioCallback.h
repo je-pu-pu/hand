@@ -35,7 +35,9 @@ public:
 
 	enum class Page
 	{
-		TAP = 0,	// キータップのデモ
+		RPS,		// じゃんけん
+		FOX,		// 1, 2, 3, フォックス
+		TAP,		// キータップのデモ
 		PAD,		// パッドのデモ
 		BASS,		// ベースのデモ
 		KICK,		// キック
@@ -55,6 +57,8 @@ public:
 	static const std::string& get_page_name( Page page )
 	{
 		static std::array< std::string, static_cast< int >( Page::MAX ) > page_name_map = {
+			"RPS",
+			"FOX",
 			"TAP",
 			"PAD",
 			"BASS",
@@ -74,21 +78,24 @@ public:
 	enum class Part
 	{
 		KICK = 0, SNARE, BASS, LEAD_L, LEAD_R, TAP, BRIGHT, PAD,
+		RPS, FOX,
 		MAX
 	};
 
 	float get_part_volume( Part part ) const
 	{
-		static const float volume_table[ static_cast< int >( Part::MAX ) ][ PAGES ] = {
-		//	{   TAP,   PAD,  BASS,  KICK, SNARE, DEMO,    R,    L,  FREE,  MAX, FIN }
-			{ 0.00f, 0.00f, 0.00f, 1.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 2.f }, // KICK
-			{ 0.00f, 0.00f, 0.00f, 0.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 1.f }, // SNARE
-			{ 0.00f, 0.00f, 0.50f, 0.50f, 0.50f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 0.f }, // BASS
-			{ 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.0f, 0.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_L
-			{ 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.0f, 1.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_R
-			{ 1.00f, 0.25f, 0.00f, 0.00f, 0.00f, 1.0f, 0.0f, 1.0f, 1.00f, 1.0f, 1.f }, // TAP
-			{ 0.00f, 0.00f, 0.10f, 0.10f, 0.10f, 0.1f, 0.5f, 0.5f, 1.00f, 1.0f, 1.f }, // BRIGHT
-			{ 0.00f, 0.25f, 0.25f, 0.25f, 0.25f, 0.5f, 0.5f, 0.5f, 0.50f, 0.5f, 0.f }, // PAD
+		constexpr static float volume_table[ static_cast< int >( Part::MAX ) ][ PAGES ] = {
+		//	{ RPS, FOX,   TAP,   PAD,  BASS,  KICK, SNARE, DEMO,    R,    L,  FREE,  MAX, FIN }
+			{ 0.f, 0.f, 0.00f, 0.00f, 0.00f, 1.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 2.f }, // KICK
+			{ 0.f, 0.f, 0.00f, 0.00f, 0.00f, 0.00f, 1.00f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 1.f }, // SNARE
+			{ 0.f, 0.f, 0.00f, 0.00f, 0.50f, 0.50f, 0.50f, 1.0f, 1.0f, 1.0f, 1.00f, 1.0f, 0.f }, // BASS
+			{ 0.f, 0.f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.0f, 0.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_L
+			{ 0.f, 0.f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.0f, 1.0f, 1.0f, 0.75f, 1.0f, 0.f }, // LEAD_R
+			{ 0.f, 0.f, 1.00f, 0.25f, 0.00f, 0.00f, 0.00f, 1.0f, 0.0f, 1.0f, 1.00f, 1.0f, 1.f }, // TAP
+			{ 0.f, 0.f, 0.00f, 0.00f, 0.10f, 0.10f, 0.10f, 0.1f, 0.5f, 0.5f, 1.00f, 1.0f, 1.f }, // BRIGHT
+			{ 0.f, 0.f, 0.00f, 0.25f, 0.25f, 0.25f, 0.25f, 0.5f, 0.5f, 0.5f, 0.50f, 0.5f, 0.f }, // PAD
+			{ 1.f },																			 // RPS
+			{ 0.f, 1.f },																		 // FOX
 		};
 
 		return volume_table[ static_cast< int >( part ) ][ get_page_index() ];
@@ -118,7 +125,7 @@ private:
 	Hand& hand;
 	LeapSoundController& leap;
 
-	Page page = Page::TAP;
+	Page page = Page::RPS;
 	
 	int step_ = 0;		// 16 分音符のカウント ( 0 .. 15 )
 	int beat_ = 0;		//  4 分音符のカウント ( 0 ..  3 )
@@ -198,7 +205,7 @@ public:
 		: AudioCallback( in, out )
 		, hand( hand )
 		, leap( leap )
-		, tap_env( 0.01f, 0.5f )
+		, tap_env( 0.01f, 1.0f )
 		, kick_env( 0.01f, 0.25f )
 		, snare_env( 0.01f, 0.25f )
 		, bass_env( 0.01f )
@@ -384,10 +391,12 @@ public:
 				snare.buffer( snare_buffer_, audioIO().framesPerSecond(), 1 );
 				set_slider_value_r( Page::SNARE, tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 			}
-			else
+			else if ( page == Page::TAP )
 			{
 				tap.buffer( common_tone_buffer_, audioIO().framesPerSecond(), 1 );
-
+			}
+			else
+			{
 				if ( page >= Page::PAD )
 				{
 					smoothing( common_tone_buffer_ );
@@ -568,7 +577,7 @@ public:
 			// ベースのボリュームが左右の手の距離によって変わる
 			if ( leap.hand_count() == 2 )
 			{
-				bass_volume.target_value() = std::clamp( ( leap.lh_pos().distanceTo( leap.rh_pos() )  - 200.f ) / 1000.f, 0.f, 1.f );
+				bass_volume.target_value() = std::clamp( ( leap.lh_pos().distanceTo( leap.rh_pos() )  - 100.f ) / 1000.f, 0.f, 1.f );
 			}
 
 			bass_volume.chase();
@@ -589,14 +598,15 @@ public:
 		const bool is_portamento_l = page < Page::CLIMAX || is_ll;
 		const bool is_portamento_r = page < Page::CLIMAX || is_rr;
 
-		const float chase_speed_l = is_portamento_l ? 0.0001f : 10.f;
-		const float chase_speed_r = is_portamento_r ? 0.0005f : 10.f;
+		const float chase_speed_scale = ( page == Page::LEAD_R ? 0.25f : page == Page::LEAD_L ? 0.5f : 1.f );
+		const float chase_speed_l = ( is_portamento_l ? 0.0001f : 10.f ) * chase_speed_scale;
+		const float chase_speed_r = ( is_portamento_r ? 0.0005f : 10.f ) * chase_speed_scale;
 
-		const std::array< float, 8 > tones_diatonic_low  = { Tone::C4, Tone::D4, Tone::E4, Tone::F4, Tone::G4, Tone::A4, Tone::B4, Tone::C5, };
-		const std::array< float, 8 > tones_diatonic_high = { Tone::C5, Tone::D5, Tone::E5, Tone::F5, Tone::G5, Tone::A5, Tone::B5, Tone::C6, };
-		const std::array< float, 6 > tones_pentatonic_low = { Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4, Tone::C5 };
-		const std::array< float, 6 > tones_pentatonic_mid = { Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5, Tone::C6 };
-		const std::array< float, 6 > tones_pentatonic_high = { Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,Tone::C7 };
+		constexpr static std::array< float, 8 > tones_diatonic_low  = { Tone::C4, Tone::D4, Tone::E4, Tone::F4, Tone::G4, Tone::A4, Tone::B4, Tone::C5, };
+		constexpr static std::array< float, 8 > tones_diatonic_high = { Tone::C5, Tone::D5, Tone::E5, Tone::F5, Tone::G5, Tone::A5, Tone::B5, Tone::C6, };
+		constexpr static std::array< float, 6 > tones_pentatonic_low = { Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4, Tone::C5 };
+		constexpr static std::array< float, 6 > tones_pentatonic_mid = { Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5, Tone::C6 };
+		constexpr static std::array< float, 6 > tones_pentatonic_high = { Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,Tone::C7 };
 
 		const auto& tones_l = tones_pentatonic_low;
 		const auto& tones_r = page == Page::CLIMAX ? tones_pentatonic_high : tones_pentatonic_mid;
@@ -632,9 +642,9 @@ public:
 
 	void mix( gam::AudioIOData& io, int io_step )
 	{
-		//                                                { TAP,   PAD,   BASS,  KICK, SNARE,  DEMO,    R,      L,  FREE,   MAX, FIN }
-		const std::array< float, PAGES >     delay_gain = { 0.25f, 0.25f, 0.10f, 0.10f, 0.10f, 0.10f, 0.20f, 0.20f, 0.20f, 0.30f, 0.75f };
-		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f };
+		//                                                { RPS,   FOX,   TAP,   PAD,   BASS,  KICK, SNARE,  DEMO,    R,      L,  FREE,   MAX, FIN }
+		const std::array< float, PAGES >     delay_gain = { 0.25f, 0.50f, 0.25f, 0.25f, 0.10f, 0.10f, 0.10f, 0.10f, 0.20f, 0.20f, 0.20f, 0.30f, 0.75f };
+		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f };
 
 		float s = 0.f;
 			
@@ -645,7 +655,8 @@ public:
 		s += lead_r() * get_part_volume( Part::LEAD_R ) * lead_r_volume.value();
 		s +=    tap() * get_part_volume( Part::TAP    ) * tap_env();
 
-		s += rock_() + scissors_() + paper_() + thumbs_up_() + fox_()  + sound_1_() + sound_2_() + sound_3_();
+		s += ( rock_() + paper_() + scissors_() + thumbs_up_() ) * get_part_volume( Part::RPS );
+		s += ( sound_1_() + sound_2_() + sound_3_() + fox_() ) * get_part_volume( Part::FOX );
 
 		const float pad = ( pad1() + pad2() + pad3() ) / 3.f;
 		s += pad      * get_part_volume( Part::PAD );
@@ -751,6 +762,7 @@ public:
 		}
 
 		play_sound_by_hand_shape();
+		send_file_by_hand_shape();
 
 		//
 		if ( step_ == 0 )
@@ -835,12 +847,29 @@ public:
 		if ( current_step_rh_.get_shape() != last_step_rh_.get_shape() && current_step_rh_.get_shape() != Controller::Hand::Shape::NONE )
 		{
 			constexpr const auto shape_count = static_cast< int >( Controller::Hand::Shape::NONE );
-			static const std::array< gam::SamplePlayer<>*, shape_count > players = {
-				// & rock_, & scissors_, & paper_, & thumbs_up_, & index_, & fox_
+			
+			static const std::array< OneShotPlayer*, shape_count > rps_players = {
+				& rock_, & scissors_, & paper_, & thumbs_up_, 
+			};
+
+			static const std::array< OneShotPlayer*, shape_count > fox_players = {
 				nullptr, & sound_2_, nullptr, nullptr, & sound_1_, & sound_3_, & fox_
 			};
 
-			auto* player = players[ static_cast< int >( current_step_rh_.get_shape() ) ];
+			OneShotPlayer* player = 0;
+
+			if ( get_page() == Page::RPS )
+			{
+				player = rps_players[ static_cast< int >( current_step_rh_.get_shape() ) ];
+			}
+			else if ( get_page() == Page::FOX )
+			{
+				player = fox_players[ static_cast< int >( current_step_rh_.get_shape() ) ];
+			}
+			else
+			{
+				return;
+			}
 
 			if ( player )
 			{
@@ -849,6 +878,21 @@ public:
 		}
 	}
 
+	void send_file_by_hand_shape()
+	{
+		if ( get_page() != Page::RPS )
+		{
+			return;
+		}
+
+		if ( current_step_rh_.get_shape() != last_step_rh_.get_shape() && current_step_rh_.get_shape() != Controller::Hand::Shape::NONE )
+		{
+			if ( current_step_rh_.get_shape() == Controller::Hand::Shape::PAPER )
+			{
+				send_fire();
+			}
+		}
+	}
 
 	void update_sequencer()
 	{
@@ -907,8 +951,9 @@ public:
 
 		const int is_fill_in = ( bar_ % 4 ) < 3 ? 0 : 1;
 
-		const std::array< int, PAGES > kick_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
-		const std::array< int, PAGES > snare_pattern = { 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
+		/// @todo ページが増えた時にずれないようにする
+		const std::array< int, PAGES > kick_pattern = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
+		const std::array< int, PAGES > snare_pattern = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3 };
 
 		if ( kick_on[ kick_pattern[ get_page_index() ] ][ is_fill_in ][ step_ ] )
 		{
