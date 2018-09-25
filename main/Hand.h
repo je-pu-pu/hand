@@ -79,7 +79,10 @@ public:
 		audio_callback_->set_mic_volume( config_.get( "hand.mic_volume", HandAudioCallback::DEFAULT_MIC_VOLUME ) );
 		audio_callback_->set_bgm_volume( config_.get( "hand.bgm_volume", HandAudioCallback::DEFAULT_BGM_VOLUME ) );
 
-		server_thread_ = start_server();
+		if ( config_.get( "hand.server", 0 ) )
+		{
+			server_thread_ = start_server();
+		}
 
 		audio_callback_->start( false );
 	}
