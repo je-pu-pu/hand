@@ -1,5 +1,6 @@
 #pragma once
 
+#include "math.h"
 #include <iostream>
 #include <array>
 #include <algorithm>
@@ -273,7 +274,7 @@ public:
 		const float min_y = 200.f;
 		const float max_y = 800.f;
 
-		return std::clamp( ( y - min_y ) / ( max_y - min_y ), 0.f, 1.f );
+		return math::clamp( ( y - min_y ) / ( max_y - min_y ), 0.f, 1.f );
 	}
 
 	const int y_pos_to_index( float y, int size ) const

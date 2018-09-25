@@ -54,8 +54,8 @@ void ofApp::update()
 		bg_color_.b *= 0.85f;
 	}
 
-	lh_point_size_ = std::clamp( lh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
-	rh_point_size_ = std::clamp( rh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
+	lh_point_size_ = math::clamp( lh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
+	rh_point_size_ = math::clamp( rh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
 }
 
 //--------------------------------------------------------------

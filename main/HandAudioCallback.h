@@ -256,8 +256,8 @@ public:
 	float get_mic_volume() const { return mic_volume_; }
 	float get_bgm_volume() const { return bgm_volume_; }
 
-	void set_mic_volume( float v ) { mic_volume_ = std::clamp( v, 0.f, 1.f ); }
-	void set_bgm_volume( float v ) { bgm_volume_ = std::clamp( v, 0.f, 1.f ); }
+	void set_mic_volume( float v ) { mic_volume_ = math::clamp( v, 0.f, 1.f ); }
+	void set_bgm_volume( float v ) { bgm_volume_ = math::clamp( v, 0.f, 1.f ); }
 
 	bool is_recording() const
 	{
@@ -288,10 +288,10 @@ public:
 	{
 		if ( min > max )
 		{
-			return std::clamp( ( max - min ) * value + min, max, min );
+			return math::clamp( ( max - min ) * value + min, max, min );
 		}
 
-		return std::clamp( ( max - min ) * value + min, min, max );
+		return math::clamp( ( max - min ) * value + min, min, max );
 	}
 
 	static float rate_to_tone_rate( float value, float min, float max )
@@ -299,7 +299,7 @@ public:
 		const float log2_min = std::log2f( min );
 		const float log2_max = std::log2f( max );
 
-		return std::clamp( std::powf( 2.f, ( log2_max - log2_min ) * value + log2_min ), min, max );
+		return math::clamp( std::powf( 2.f, ( log2_max - log2_min ) * value + log2_min ), min, max );
 	}
 
 	static float tone_rate_to_rate( float value, float min, float max )
@@ -308,7 +308,7 @@ public:
 		const float log2_max = std::log2f( max );
 		const float log2_value = std::log2f( value );
 
-		return std::clamp( ( log2_value - log2_min ) / ( log2_max - log2_min ), 0.f, 1.f );
+		return math::clamp( ( log2_value - log2_min ) / ( log2_max - log2_min ), 0.f, 1.f );
 	}
 
 	static float range_to_range( float value, float min, float max, float new_min, float new_max )
@@ -577,7 +577,7 @@ public:
 			// ベースのボリュームが左右の手の距離によって変わる
 			if ( leap.hand_count() == 2 )
 			{
-				bass_volume.target_value() = std::clamp( ( leap.lh_pos().distanceTo( leap.rh_pos() )  - 100.f ) / 1000.f, 0.f, 1.f );
+				bass_volume.target_value() = math::clamp( ( leap.lh_pos().distanceTo( leap.rh_pos() )  - 100.f ) / 1000.f, 0.f, 1.f );
 			}
 
 			bass_volume.chase();
