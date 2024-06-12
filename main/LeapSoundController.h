@@ -139,6 +139,9 @@ private:
 
 	int hand_count_ = 0;
 
+	float y_min_ = 200.f;				///< 0.f ～ 1.f にマップした時に 0.f に対応する Y の位置
+	float y_max_ = 800.f;				///< 0.f ～ 1.f にマップした時に 1.f に対応する Y の位置
+
 protected:
 	void start_l_slider_moving( float y )
 	{
@@ -271,10 +274,7 @@ public:
 
 	float y_pos_to_rate( float y ) const
 	{
-		const float min_y = 200.f;
-		const float max_y = 800.f;
-
-		return math::clamp( ( y - min_y ) / ( max_y - min_y ), 0.f, 1.f );
+		return math::clamp( ( y - y_min_ ) / ( y_max_ - y_min_ ), 0.f, 1.f );
 	}
 
 	const int y_pos_to_index( float y, int size ) const
@@ -359,6 +359,12 @@ public:
 	}
 
 	int hand_count() const { return hand_count_;  }
+
+	float get_y_min() { return y_min_; }
+	float get_y_max() { return y_max_; }
+
+	void set_y_min( float v ) { y_min_ = v; }
+	void set_y_max( float v ) { y_max_ = v; }
 
 public:
     void onInit( const Leap::Controller& ) override { std::cout << "Initialized" << std::endl; }

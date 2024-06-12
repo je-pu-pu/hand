@@ -73,6 +73,9 @@ public:
 		controller_.setPolicy( Leap::Controller::POLICY_BACKGROUND_FRAMES );
 		controller_.setPolicy( Leap::Controller::POLICY_ALLOW_PAUSE_RESUME );
 
+		leap_.set_y_min( config_.get( "hand.y_min", leap_.get_y_min() ) );
+		leap_.set_y_max( config_.get( "hand.y_max", leap_.get_y_max() ) );
+
 		// std::cout << controller.config().getFloat( "Gesture.Swipe.MinLength" ) << std::endl;
 
 		audio_callback_ = std::make_unique< HandAudioCallback >( *this, in, out, leap_ );
@@ -105,7 +108,10 @@ public:
 		config_.set( "hand.bgm_volume", audio_callback_->get_bgm_volume() );
 		config_.save_file( "./config.txt" );
 
-		server_thread_.detach();
+		if ( server_thread_.joinable() )
+		{
+			server_thread_.detach();
+		}
 	}
 
 	std::thread start_server()
