@@ -6,12 +6,14 @@
 /main/*.def
 /main/*.dll
 /main/*.lib
+/boost_1_69_0/
 /gamma/
 /main/*.opendb
 /main/*.filters
 /main/*.sdf
 /main/*.user
 /LeapSDK
+/openFrameworksHand/.*
 /openFrameworksHand/*.wav
 /openFrameworksHand/obj
 /openFrameworksHand/bin
