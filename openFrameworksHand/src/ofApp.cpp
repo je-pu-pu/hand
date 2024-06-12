@@ -111,9 +111,9 @@ void ofApp::draw(){
 
 	draw_text( font_small_, time.str(), ( font_small_.getAscenderHeight() / 2 ) );
 
-	ofDrawBitmapStringHighlight( std::to_string( ofGetFrameRate() ), 0, 10 );
-	ofDrawBitmapStringHighlight( std::to_string( audio().get_mic_volume() ), 0, 30 );
-	ofDrawBitmapStringHighlight( std::to_string( audio().get_bgm_volume() ), 0, 50 );
+	ofDrawBitmapStringHighlight( "FPS : " + std::to_string( ofGetFrameRate() ), 0, 10 );
+	ofDrawBitmapStringHighlight( "MIC VOL : " + std::to_string( audio().get_mic_volume() ), 0, 30 );
+	ofDrawBitmapStringHighlight( "BGM VOL : " + std::to_string( audio().get_bgm_volume() ), 0, 50 );
 
 	ofDrawBitmapStringHighlight( "L Shape : " + std::string( leap().get_lh().get_shape_name() ), 0, 70 );
 	ofDrawBitmapStringHighlight( "R Shape : " + std::string( leap().get_rh().get_shape_name() ), 0, 90 );
