@@ -11,6 +11,10 @@ hand は LeapMotion を使って空中で手をかざして音楽を奏でるア
 
 # ビルド
 
+## openFrameworks
+
+./ofxOsc に ofx の addons/ofxOsc を配置。
+
 ## boost
 
 ./boost_1_69_0/ に boost を配置。

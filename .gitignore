@@ -1,3 +1,9 @@
+/boost_1_69_0/
+/of_v0.12.0_vs_release/
+/gamma/
+/LeapSDK/
+/ofxOsc/
+
 /main/Release
 /main/Gamma
 /main/Debug
@@ -6,13 +12,10 @@
 /main/*.def
 /main/*.dll
 /main/*.lib
-/boost_1_69_0/
-/gamma/
 /main/*.opendb
 /main/*.filters
 /main/*.sdf
 /main/*.user
-/LeapSDK
 /openFrameworksHand/.*
 /openFrameworksHand/*.wav
 /openFrameworksHand/obj

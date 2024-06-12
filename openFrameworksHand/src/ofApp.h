@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ofMain.h"
+#include <ofxOsc.h>
 #include <string>
 
 class Hand;
@@ -28,6 +29,8 @@ protected:
 
 	const HandAudioCallback& audio() const;
 	const LeapSoundController& leap() const;
+
+	ofxOscSender osc_sender_;
 
 public:
 	ofApp( Hand& );

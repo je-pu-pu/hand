@@ -1,0 +1,4 @@
+/I ../ofxOsc/src
+/I ../ofxOsc/libs/oscpack/src
+/I ../ofxOsc/libs/oscpack/src/ip
+/I ../ofxOsc/libs/oscpack/src/osc

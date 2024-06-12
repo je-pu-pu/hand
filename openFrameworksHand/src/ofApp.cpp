@@ -29,6 +29,8 @@ ofApp::ofApp( Hand& hand )
 		}
 
 	} );
+
+	osc_sender_.setup( "localhost", 7700 );
 }
 
 //--------------------------------------------------------------
@@ -56,6 +58,13 @@ void ofApp::update()
 
 	lh_point_size_ = math::clamp( lh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
 	rh_point_size_ = math::clamp( rh_point_size_ * 0.9f, POINT_SIZE_MIN, POINT_SIZE_MAX );
+
+	ofxOscMessage m;
+	m.setAddress( "/bg" );
+	m.addFloatArg( bg_color_.r );
+	// m.addIntArg( 100 );
+	// m.addFloatArg( 0.75f );
+	osc_sender_.sendMessage( m );
 }
 
 //--------------------------------------------------------------
