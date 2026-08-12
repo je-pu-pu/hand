@@ -30,7 +30,9 @@ ofApp::ofApp( Hand& hand )
 
 	} );
 
-	osc_sender_.setup( "localhost", 7700 );
+	osc_sender_.setup(
+		hand_.config().get( "osc.host", std::string( OSC_DEFAULT_HOST ) ),
+		hand_.config().get( "osc.port", OSC_DEFAULT_PORT ) );
 }
 
 //--------------------------------------------------------------

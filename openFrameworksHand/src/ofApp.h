@@ -16,6 +16,10 @@ public:
 	const float POINT_SIZE_MIN = 100.f;
 	const float POINT_SIZE_MAX = 200.f;
 
+	/// OSC の送信先。設定ファイルの osc.host / osc.port で変更できる
+	static constexpr const char* OSC_DEFAULT_HOST = "localhost";
+	static const int OSC_DEFAULT_PORT = 7700;
+
 protected:
 	Hand& hand_;
 	ofTrueTypeFont font_big_;
