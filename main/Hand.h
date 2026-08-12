@@ -19,11 +19,14 @@ private:
 	std::unique_ptr< HandAudioCallback > audio_callback_;
 
 	boost::asio::io_service io_service_;
-	boost::asio::ip::tcp::socket server_socket_;
-	boost::asio::ip::tcp::acceptor acceptor_;
+	boost::asio::ip::tcp::socket fire_server_socket_;
+
+	/// hand.fire_server が有効なときだけ生成する ( 生成した時点でポートを bind するため )
+	std::unique_ptr< boost::asio::ip::tcp::acceptor > fire_server_acceptor_;
+
 	bool is_central_connected_ = false;
 
-	std::thread server_thread_;
+	std::thread fire_server_thread_;
 
 	Config config_;
 	LeapSoundController leap_;
@@ -32,9 +35,11 @@ private:
 	std::function< void( bool, bool ) > on_step_;
 
 public:
+	/// fire サーバーの待ち受けポート。設定ファイルの hand.fire_server_port で変更できる
+	static const int FIRE_SERVER_DEFAULT_PORT = 8080;
+
 	Hand()
-		: server_socket_( io_service_ )
-		, acceptor_( io_service_, boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(), 8080 ) )
+		: fire_server_socket_( io_service_ )
 	{
 
 	}
@@ -82,9 +87,10 @@ public:
 		audio_callback_->set_mic_volume( config_.get( "hand.mic_volume", HandAudioCallback::DEFAULT_MIC_VOLUME ) );
 		audio_callback_->set_bgm_volume( config_.get( "hand.bgm_volume", HandAudioCallback::DEFAULT_BGM_VOLUME ) );
 
-		if ( config_.get( "hand.server", 0 ) )
+		if ( config_.get( "hand.fire_server", 0 ) )
 		{
-			server_thread_ = start_server();
+			fire_server_thread_ = start_fire_server(
+				config_.get( "hand.fire_server_port", FIRE_SERVER_DEFAULT_PORT ) );
 		}
 
 		audio_callback_->start( false );
@@ -95,6 +101,9 @@ public:
 
 	const HandAudioCallback& audio() const { return *audio_callback_; }
 	const LeapSoundController& leap() const { return leap_; }
+
+	/// 設定ファイルの読み書き ( 非 const なので、未設定の項目は既定値が書き戻される )
+	Config& config() { return config_; }
 
 	void stop()
 	{
@@ -108,18 +117,23 @@ public:
 		config_.set( "hand.bgm_volume", audio_callback_->get_bgm_volume() );
 		config_.save_file( "./config.txt" );
 
-		if ( server_thread_.joinable() )
+		if ( fire_server_thread_.joinable() )
 		{
-			server_thread_.detach();
+			fire_server_thread_.detach();
 		}
 	}
 
-	std::thread start_server()
+	std::thread start_fire_server( int port )
 	{
-		return std::thread( [this] () {
+		return std::thread( [this, port] () {
 			try
 			{
-				acceptor_.accept( server_socket_ );
+				fire_server_acceptor_ = std::make_unique< boost::asio::ip::tcp::acceptor >(
+					io_service_,
+					boost::asio::ip::tcp::endpoint( boost::asio::ip::tcp::v4(),
+						static_cast< unsigned short >( port ) ) );
+
+				fire_server_acceptor_->accept( fire_server_socket_ );
 				is_central_connected_ = true;
 			}
 			catch ( std::exception e )
@@ -137,7 +151,7 @@ public:
 			return;
 		}
 
-		size_t s = boost::asio::write( server_socket_, boost::asio::buffer( "fire" ) );
+		size_t s = boost::asio::write( fire_server_socket_, boost::asio::buffer( "fire" ) );
 		std::cout << "write " << s << std::endl;
 	}
 };
