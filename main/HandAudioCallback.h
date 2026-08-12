@@ -156,6 +156,10 @@ private:
 	unsigned int recording_key_state_ = 0;
 	int recording_frame_index_ = 0;
 
+	/// 前回の key_input() 呼び出し時にページ移動キーが押されていたか？
+	bool is_left_key_down_ = false;
+	bool is_right_key_down_ = false;
+
 	gam::Array< float > common_tone_buffer_;
 	gam::Array< float > kick_buffer_;
 	gam::Array< float > snare_buffer_;
@@ -316,18 +320,30 @@ public:
 		return rate_to_range( range_to_rate( value, min, max ), new_min, new_max );
 	}
 
+	/// キーが押された瞬間かどうかを返す ( 押しっぱなしでは最初の 1 回しか true にならない )
+	static bool is_key_just_pressed( int key, bool& is_down_last_time )
+	{
+		const bool is_down = ( GetAsyncKeyState( key ) & 0b1000000000000000 ) != 0;
+		const bool is_just_pressed = is_down && ! is_down_last_time;
+
+		is_down_last_time = is_down;
+
+		return is_just_pressed;
+	}
+
 	void key_input()
 	{
-		if ( GetAsyncKeyState( VK_LEFT ) & 0b1000000000000000 )
+		// ページ移動は押しっぱなしでも 1 回だけ反応させる
+		if ( is_key_just_pressed( VK_LEFT, is_left_key_down_ ) )
 		{
 			leap.decrement_page();
 		}
-		if ( GetAsyncKeyState( VK_RIGHT ) & 0b1000000000000000 )
+		if ( is_key_just_pressed( VK_RIGHT, is_right_key_down_ ) )
 		{
 			leap.increment_page();
 		}
 
-		const float speed = 0.02f;
+		const float speed = 0.001f;
 
 		if ( GetAsyncKeyState( VK_NUMPAD1 ) & 0b1000000000000000 )
 		{
