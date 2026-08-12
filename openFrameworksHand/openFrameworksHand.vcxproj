@@ -229,6 +229,15 @@
     <ClInclude Include="..\ofxOsc\src\ofxOscReceiver.h" />
     <ClInclude Include="..\ofxOsc\src\ofxOscSender.h" />
     <ClInclude Include="src\ofApp.h" />
+    <ClInclude Include="..\main\AudioCallback.h" />
+    <ClInclude Include="..\main\chase_value.h" />
+    <ClInclude Include="..\main\Config.h" />
+    <ClInclude Include="..\main\Hand.h" />
+    <ClInclude Include="..\main\HandAudioCallback.h" />
+    <ClInclude Include="..\main\LeapSoundController.h" />
+    <ClInclude Include="..\main\math.h" />
+    <ClInclude Include="..\main\serialize.h" />
+    <ClInclude Include="..\main\Tone.h" />
   </ItemGroup>
   <ItemGroup>
     <!-- openFrameworks 本体はビルド済みの openframeworksLib.lib をリンクする（AdditionalDependencies 参照）。
