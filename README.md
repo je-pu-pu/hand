@@ -48,11 +48,48 @@ gesture の記述は `include/Leap.h` にしか無く `include/LeapC.h` には�
 
 # ビルド
 
-## openFrameworks
+`openFrameworksHand/openFrameworksHand.sln` の **Release|Win32**（ または Debug|Win32 ）をビルドする。
+これだけで gamma.lib も一緒にビルドされ、`openFrameworksHand/bin/openFrameworksHand.exe` ができる。
 
-./ofxOsc に ofx の addons/ofxOsc を配置。
+x64 構成はインクルードパス・依存ライブラリが未設定なので使えない。Win32 でビルドすること。
 
-## boost
+`main/main.sln` は旧 CUI 版（ main ）と gamma のためのもので、アプリのビルドには不要。
+
+## 開発環境
+
+- Visual Studio 2026 ( プラットフォームツールセット **v145** )
+
+## 外部ライブラリの配置
+
+以下はリポジトリに含まれないので、各自で配置する（ `.gitignore` で除外している ）。
+
+| 配置先 | 内容 |
+| --- | --- |
+| `./LeapSDK/` | LeapMotion SDK 3.2.1 |
+| `./Gamma/` | Gamma |
+| `./ofxOsc/` | openFrameworks の `addons/ofxOsc` |
+| `./boost_1_69_0/` | boost |
+
+### openFrameworks
+
+openFrameworks 0.9.8 ( vs release ) はリポジトリの外に置き、
+`openFrameworksHand.vcxproj` の `OF_ROOT_DIR` でその場所を指す。
+
+既定値は `E:\lib\of_v0.9.8_vs_release` になっているので、別の場所に置く場合は
+**環境変数 `OF_ROOT_DIR` を設定する**（ 環境変数があればそちらが優先される ）。
+
+openFrameworks 本体はビルド済みの `openframeworksLib.lib` ( Win32 ) を直接リンクするため、
+openFrameworks 側のプロジェクトをビルドし直す必要はない。
+
+### Gamma
+
+`Gamma/gamma.vcxproj` は openFrameworksHand からプロジェクト参照されており、一緒にビルドされる。
+ただし Gamma はリポジトリの外から持ってくるものなので、以下を自分で設定する必要がある。
+
+- プラットフォームツールセットを **v145** にする
+- 出力先をソリューションに依存させないため `OutDir` を `$(ProjectDir)$(Configuration)\` に設定する
+
+### boost
 
 ./boost_1_69_0/ に boost を配置。
 
@@ -61,3 +98,15 @@ cd boost_1_69_0
 .\bootstrap
 .\b2 --with-date_time threading=multi variant=debug,release
 ```
+
+# 実行
+
+作業ディレクトリを `openFrameworksHand/` にして起動する
+（ wav ファイル・`data/`・`config.txt` がそこにあるため。Visual Studio から実行すれば自動的にそうなる ）。
+
+# 照明 ( DMX ) との連携
+
+このリポジトリに DMX を直接制御するコードは無い。
+`ofApp::update()` から OSC で `localhost:7700` に `/bg`（ 背景色 ）を送っており、
+それを [ QLC+ ]( https://www.qlcplus.org/ ) の OSC 入力プラグインで受けて DMX に変換している。
+QLC+ のワークスペースは `dmx.qxw`。

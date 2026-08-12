@@ -23,3 +23,11 @@
 /main/config.txt
 /openFrameworksHand/config.txt
 /main/x64/
+
+/main/*.exe
+/main/*.exe.backup
+/openFrameworksHand/*.exe
+/openFrameworksHand/*.dll
+/openFrameworksHand/data/
+
+/tracking-software-*.zip
