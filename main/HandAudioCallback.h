@@ -259,6 +259,7 @@ public:
 
 	float get_mic_volume() const { return mic_volume_; }
 	float get_bgm_volume() const { return bgm_volume_; }
+	float get_bass_volume() const { return bass_volume.value(); }
 
 	void set_mic_volume( float v ) { mic_volume_ = math::clamp( v, 0.f, 1.f ); }
 	void set_bgm_volume( float v ) { bgm_volume_ = math::clamp( v, 0.f, 1.f ); }

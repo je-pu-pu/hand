@@ -35,6 +35,7 @@ protected:
 	void draw_text( const ofTrueTypeFont&, const std::string&, float, float = 4.f ) const;
 
 	void send_osc_string( const std::string& address, const std::string& value );
+	void send_osc_float( const std::string& address, float value );
 
 	const HandAudioCallback& audio() const;
 	const LeapSoundController& leap() const;

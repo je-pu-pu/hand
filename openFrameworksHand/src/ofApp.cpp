@@ -78,6 +78,21 @@ void ofApp::update()
 		send_osc_string( "/page", page_name );
 		last_sent_page_name_ = page_name;
 	}
+
+	// BASS ページでは、両手の距離で決まるベースの音量を照明側にも渡す
+	if ( audio().get_page() == HandAudio::Page::BASS )
+	{
+		send_osc_float( "/bass", audio().get_bass_volume() );
+	}
+
+}
+
+void ofApp::send_osc_float( const std::string& address, float value )
+{
+	ofxOscMessage m;
+	m.setAddress( address );
+	m.addFloatArg( value );
+	osc_sender_.sendMessage( m );
 }
 
 void ofApp::send_osc_string( const std::string& address, const std::string& value )
