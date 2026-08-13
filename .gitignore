@@ -24,6 +24,7 @@
 /openFrameworksHand/config.txt
 /main/x64/
 
+/main/obj
 /main/*.exe
 /main/*.exe.backup
 /openFrameworksHand/*.exe

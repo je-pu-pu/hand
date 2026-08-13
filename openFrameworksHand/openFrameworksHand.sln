@@ -4,6 +4,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "openFrameworksHand", "openF
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gamma", "..\Gamma\gamma.vcxproj", "{562D710B-B150-4234-A925-01A047524CE3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "main", "..\main\main.vcxproj", "{3144B1EE-1594-45DC-A4F5-F8099036F463}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -28,6 +30,12 @@ Global
 		{562D710B-B150-4234-A925-01A047524CE3}.Release|Win32.Build.0 = Release|Win32
 		{562D710B-B150-4234-A925-01A047524CE3}.Release|x64.ActiveCfg = Release|x64
 		{562D710B-B150-4234-A925-01A047524CE3}.Release|x64.Build.0 = Release|x64
+		{3144B1EE-1594-45DC-A4F5-F8099036F463}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3144B1EE-1594-45DC-A4F5-F8099036F463}.Debug|Win32.Build.0 = Debug|Win32
+		{3144B1EE-1594-45DC-A4F5-F8099036F463}.Debug|x64.ActiveCfg = Debug|x64
+		{3144B1EE-1594-45DC-A4F5-F8099036F463}.Release|Win32.ActiveCfg = Release|Win32
+		{3144B1EE-1594-45DC-A4F5-F8099036F463}.Release|Win32.Build.0 = Release|Win32
+		{3144B1EE-1594-45DC-A4F5-F8099036F463}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
