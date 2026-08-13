@@ -170,8 +170,20 @@ void ofApp::keyPressed(int key)
 {
 	switch ( key )
 	{
+	// フルスクリーンの切り替え ( f / F11 / Alt + Enter )
+	// アルファベットは実際に入力された文字コードが渡ってくるため 'F' も受ける
+	// ( Caps Lock や Shift で大文字になる )
 	case 'f':
+	case 'F':
+	case OF_KEY_F11:
 		ofToggleFullscreen();
+		break;
+
+	case OF_KEY_RETURN:
+		if ( ofGetKeyPressed( OF_KEY_ALT ) )
+		{
+			ofToggleFullscreen();
+		}
 		break;
 
 	default:
