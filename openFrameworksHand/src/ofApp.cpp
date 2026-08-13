@@ -67,6 +67,25 @@ void ofApp::update()
 	// m.addIntArg( 100 );
 	// m.addFloatArg( 0.75f );
 	osc_sender_.sendMessage( m );
+
+	// 照明側 ( Chataigne / QLC+ ) でページごとの演出を切り替えるために送る。
+	// 番号ではなくページ名を送るのは、設定を見て意味が分かるようにするためと、
+	// Page の enum の順序を変えても照明側がずれないようにするため。
+	const std::string& page_name = HandAudio::get_page_name( audio().get_page() );
+
+	if ( page_name != last_sent_page_name_ )
+	{
+		send_osc_string( "/page", page_name );
+		last_sent_page_name_ = page_name;
+	}
+}
+
+void ofApp::send_osc_string( const std::string& address, const std::string& value )
+{
+	ofxOscMessage m;
+	m.setAddress( address );
+	m.addStringArg( value );
+	osc_sender_.sendMessage( m );
 }
 
 //--------------------------------------------------------------

@@ -29,7 +29,12 @@ protected:
 	float lh_point_size_;
 	float rh_point_size_;
 
+	/// 最後に /page で送ったページ名。変わったときだけ送るために持つ
+	std::string last_sent_page_name_;
+
 	void draw_text( const ofTrueTypeFont&, const std::string&, float, float = 4.f ) const;
+
+	void send_osc_string( const std::string& address, const std::string& value );
 
 	const HandAudioCallback& audio() const;
 	const LeapSoundController& leap() const;
