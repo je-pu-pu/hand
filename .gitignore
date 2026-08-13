@@ -32,3 +32,6 @@
 /openFrameworksHand/data/
 
 /tracking-software-*.zip
+/tracking-software-*/
+
+/hand_autosave/
