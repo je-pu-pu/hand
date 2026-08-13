@@ -660,7 +660,7 @@ public:
 	{
 		//                                                { RPS,   FOX,   TAP,   PAD,   BASS,  KICK, SNARE,  DEMO,    R,      L,  FREE,   MAX, FIN }
 		const std::array< float, PAGES >     delay_gain = { 0.25f, 0.50f, 0.25f, 0.25f, 0.10f, 0.10f, 0.10f, 0.10f, 0.20f, 0.20f, 0.20f, 0.30f, 0.75f };
-		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f };
+		const std::array< float, PAGES >  delay_feedbak = { 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.50f, 0.75f };
 
 		float s = 0.f;
 			
