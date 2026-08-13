@@ -28,6 +28,14 @@ ofApp::ofApp( Hand& hand )
 			rh_point_size_ = POINT_SIZE_MAX;
 		}
 
+		// タップのフラグは 1 step の間しか立たないので、ここで拾っておく。
+		// OSC の送信自体はオーディオコールバックからは行わず、update() に任せる。
+		if ( audio().get_page() == HandAudio::Page::TAP &&
+			 ( audio().is_l_tapped() || audio().is_r_tapped() ) )
+		{
+			is_tap_pending_ = true;
+		}
+
 	} );
 
 	osc_sender_.setup(
@@ -85,6 +93,18 @@ void ofApp::update()
 		send_osc_float( "/bass", audio().get_bass_volume() );
 	}
 
+	if ( is_tap_pending_.exchange( false ) )
+	{
+		send_osc_trigger( "/tap" );
+	}
+}
+
+/// 引数なしの OSC メッセージを送る ( 受信側ではトリガーとして扱われる )
+void ofApp::send_osc_trigger( const std::string& address )
+{
+	ofxOscMessage m;
+	m.setAddress( address );
+	osc_sender_.sendMessage( m );
 }
 
 void ofApp::send_osc_float( const std::string& address, float value )

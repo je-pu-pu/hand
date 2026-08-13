@@ -2,6 +2,7 @@
 
 #include "ofMain.h"
 #include <ofxOsc.h>
+#include <atomic>
 #include <string>
 
 class Hand;
@@ -32,10 +33,14 @@ protected:
 	/// 最後に /page で送ったページ名。変わったときだけ送るために持つ
 	std::string last_sent_page_name_;
 
+	/// タップされたことをオーディオスレッドから update() へ渡すためのフラグ
+	std::atomic< bool > is_tap_pending_{ false };
+
 	void draw_text( const ofTrueTypeFont&, const std::string&, float, float = 4.f ) const;
 
 	void send_osc_string( const std::string& address, const std::string& value );
 	void send_osc_float( const std::string& address, float value );
+	void send_osc_trigger( const std::string& address );
 
 	const HandAudioCallback& audio() const;
 	const LeapSoundController& leap() const;
