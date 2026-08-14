@@ -171,6 +171,9 @@ private:
 	bool is_l_tapped_ = false;			/// 現在の step で右タップされたかどうか？
 	bool is_r_tapped_ = false;			/// 現在の step で左タップされたかどうか？
 
+	/// 現在の step で手の形によって音が鳴った場合、その手の形 ( 鳴っていなければ NONE )
+	LeapSoundController::Hand::Shape played_shape_ = LeapSoundController::Hand::Shape::NONE;
+
 	float mic_volume_ = DEFAULT_MIC_VOLUME;		/// マイクの出力ボリューム
 	float bgm_volume_ = DEFAULT_BGM_VOLUME;		/// 録音時の出力ボリューム
 
@@ -252,6 +255,7 @@ public:
 
 	bool is_l_tapped() const { return is_l_tapped_; }
 	bool is_r_tapped() const { return is_r_tapped_; }
+	LeapSoundController::Hand::Shape get_played_shape() const { return played_shape_; }
 
 	int get_step() const { return step_; }
 	int get_beat() const { return beat_; }
@@ -861,6 +865,8 @@ public:
 	
 	void play_sound_by_hand_shape()
 	{
+		played_shape_ = LeapSoundController::Hand::Shape::NONE;
+
 		if ( current_step_rh_.get_shape() != last_step_rh_.get_shape() && current_step_rh_.get_shape() != Controller::Hand::Shape::NONE )
 		{
 			constexpr const auto shape_count = static_cast< int >( Controller::Hand::Shape::NONE );
@@ -891,6 +897,7 @@ public:
 			if ( player )
 			{
 				player->reset();
+				played_shape_ = current_step_rh_.get_shape();
 			}
 		}
 	}

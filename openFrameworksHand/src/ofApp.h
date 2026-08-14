@@ -21,6 +21,13 @@ public:
 	static constexpr const char* OSC_DEFAULT_HOST = "localhost";
 	static const int OSC_DEFAULT_PORT = 7700;
 
+	/// 手の形で鳴った音を照明側へ伝えるための OSC メッセージ
+	struct ShapeMessage
+	{
+		const char* address;
+		const char* value;
+	};
+
 protected:
 	Hand& hand_;
 	ofTrueTypeFont font_big_;
@@ -35,6 +42,9 @@ protected:
 
 	/// タップされたことをオーディオスレッドから update() へ渡すためのフラグ
 	std::atomic< bool > is_tap_pending_{ false };
+
+	/// 手の形で鳴った音をオーディオスレッドから update() へ渡す。null なら送るものが無い
+	std::atomic< const ShapeMessage* > pending_shape_message_{ nullptr };
 
 	void draw_text( const ofTrueTypeFont&, const std::string&, float, float = 4.f ) const;
 

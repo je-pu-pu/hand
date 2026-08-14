@@ -4,6 +4,57 @@
 
 #include <boost/format.hpp>
 
+namespace
+{
+
+/**
+ * 手の形に対応する OSC メッセージを返す ( 対応が無ければ nullptr )
+ *
+ * HandAudioCallback::play_sound_by_hand_shape() で実際に音が鳴る組み合わせに合わせている。
+ */
+const ofApp::ShapeMessage* get_shape_message( HandAudioCallback::Page page, LeapSoundController::Hand::Shape shape )
+{
+	typedef LeapSoundController::Hand::Shape Shape;
+
+	static const ofApp::ShapeMessage rps_rock      = { "/rps", "r" };
+	static const ofApp::ShapeMessage rps_paper     = { "/rps", "p" };
+	static const ofApp::ShapeMessage rps_scissors  = { "/rps", "s" };
+	static const ofApp::ShapeMessage rps_thumbs_up = { "/rps", "thumbs_up" };
+
+	static const ofApp::ShapeMessage fox_1   = { "/fox", "1" };
+	static const ofApp::ShapeMessage fox_2   = { "/fox", "2" };
+	static const ofApp::ShapeMessage fox_3   = { "/fox", "3" };
+	static const ofApp::ShapeMessage fox_fox = { "/fox", "fox" };
+
+	if ( page == HandAudioCallback::Page::RPS )
+	{
+		switch ( shape )
+		{
+		case Shape::ROCK:		return & rps_rock;
+		case Shape::PAPER:		return & rps_paper;
+		case Shape::SCISSORS:	return & rps_scissors;
+		case Shape::THUMBS_UP:	return & rps_thumbs_up;
+		default:				return nullptr;
+		}
+	}
+
+	if ( page == HandAudioCallback::Page::FOX )
+	{
+		switch ( shape )
+		{
+		case Shape::INDEX:		return & fox_1;
+		case Shape::SCISSORS:	return & fox_2;
+		case Shape::THREE:		return & fox_3;
+		case Shape::FOX:		return & fox_fox;
+		default:				return nullptr;
+		}
+	}
+
+	return nullptr;
+}
+
+} // namespace
+
 ofApp::ofApp( Hand& hand )
 	: hand_( hand )
 	, lh_point_size_( POINT_SIZE_MIN )
@@ -34,6 +85,12 @@ ofApp::ofApp( Hand& hand )
 			 ( audio().is_l_tapped() || audio().is_r_tapped() ) )
 		{
 			is_tap_pending_ = true;
+		}
+
+		// 手の形で音が鳴ったら、どの形だったかを照明側へ伝える
+		if ( const ShapeMessage* message = get_shape_message( audio().get_page(), audio().get_played_shape() ) )
+		{
+			pending_shape_message_ = message;
 		}
 
 	} );
@@ -96,6 +153,11 @@ void ofApp::update()
 	if ( is_tap_pending_.exchange( false ) )
 	{
 		send_osc_trigger( "/tap" );
+	}
+
+	if ( const ShapeMessage* message = pending_shape_message_.exchange( nullptr ) )
+	{
+		send_osc_string( message->address, message->value );
 	}
 }
 
