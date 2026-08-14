@@ -819,16 +819,16 @@ public:
 
 		if ( l_tapped || r_tapped )
 		{
-			const int random_note_range = 5;
-			const std::array< float, 21 > tap_note = {
-				Tone::C3, Tone::D3, Tone::E3, Tone::G3, Tone::A3,
-				Tone::C4, Tone::D4, Tone::E4, Tone::G4, Tone::A4,
-				Tone::C5, Tone::D5, Tone::E5, Tone::G5, Tone::A5,
-				Tone::C6, Tone::D6, Tone::E6, Tone::G6, Tone::A6,
+			// tap ‚Ì‰¹‚É‡‚í‚¹‚Ä PAD ‚Ì‰¹‚ğ˜^‰¹‚Å‚«‚é‚æ‚¤A‰¹’ö‚Í C ‚Æ G ‚ÉŒÀ’è‚µAƒ‰ƒ“ƒ_ƒ€‚Èãæ‚¹‚Í‚µ‚È‚¢
+			const std::array< float, 9 > tap_note = {
+				Tone::C3, Tone::G3,
+				Tone::C4, Tone::G4,
+				Tone::C5, Tone::G5,
+				Tone::C6, Tone::G6,
 				Tone::C7
 			};
 			const auto tapped_y = l_tapped ? leap.lh_pos().y : leap.rh_pos().y;
-			const int tap_index = leap.y_pos_to_index( tapped_y, tap_note.size() - random_note_range ) + rand() % random_note_range;
+			const int tap_index = leap.y_pos_to_index( tapped_y, tap_note.size() );
 			
 			tap.rate( ( page == Page::TAP && ! leap.is_lh_valid() ) ? 1.f : ( tap_note[ tap_index ] / Tone::C4 ) );
 			tap.reset();
