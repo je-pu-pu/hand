@@ -153,6 +153,10 @@ private:
 	common::chase_value< float > lead_l_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 	common::chase_value< float > lead_r_volume = common::chase_value< float >( 0.f, 0.f, 0.0001f );
 
+	/// エンターキーを押している間だけ鳴らす音 ( 真ん中のド )
+	gam::Sine<> enter_tone_;
+	common::chase_value< float > enter_tone_volume_ = common::chase_value< float >( 0.f, 0.f, 0.001f );
+
 	unsigned int recording_key_state_ = 0;
 	int recording_frame_index_ = 0;
 
@@ -235,6 +239,8 @@ public:
 		delay.delay( 60.f / get_bpm() / 2.f );
 
 		bq_filter.type( gam::HIGH_PASS );
+
+		enter_tone_.freq( Tone::C4 );
 
 		set_slider_value_r( Page::KICK,  tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
 		set_slider_value_r( Page::SNARE, tone_rate_to_rate( 1.f, RHYTHM_RATE_MIN, RHYTHM_RATE_MAX ) );
@@ -384,6 +390,9 @@ public:
 		{
 			set_bgm_volume( get_bgm_volume() + 0.001f );
 		}
+
+		// エンターキーを押している間だけ真ん中のドを鳴らす
+		enter_tone_volume_.target_value() = ( GetAsyncKeyState( VK_RETURN ) & 0b1000000000000000 ) ? 1.f : 0.f;
 
 		recording_key_state_ <<= 1;
 		recording_key_state_ |= static_cast< bool >( GetAsyncKeyState( 'R' ) & 0b1000000000000000 );
@@ -584,6 +593,7 @@ public:
 
 			update_bass();
 			update_lead();
+			enter_tone_volume_.chase();
 
 			mix( io, n );
 
@@ -675,6 +685,7 @@ public:
 		s += lead_l() * get_part_volume( Part::LEAD_L ) * lead_l_volume.value();
 		s += lead_r() * get_part_volume( Part::LEAD_R ) * lead_r_volume.value();
 		s +=    tap() * get_part_volume( Part::TAP    ) * tap_env();
+		s += enter_tone_() * enter_tone_volume_.value();
 
 		s += ( rock_() + paper_() + scissors_() + thumbs_up_() ) * get_part_volume( Part::RPS );
 		s += ( sound_1_() + sound_2_() + sound_3_() + fox_() ) * get_part_volume( Part::FOX );
