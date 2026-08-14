@@ -132,7 +132,7 @@ void ofApp::update()
 	// m.addFloatArg( 0.75f );
 	osc_sender_.sendMessage( m );
 
-	// 照明側 ( Chataigne / QLC+ ) でページごとの演出を切り替えるために送る。
+	// 照明側 ( Chataigne ) でページごとの演出を切り替えるために送る。
 	// 番号ではなくページ名を送るのは、設定を見て意味が分かるようにするためと、
 	// Page の enum の順序を変えても照明側がずれないようにするため。
 	const std::string& page_name = HandAudio::get_page_name( audio().get_page() );

@@ -107,6 +107,21 @@ cd boost_1_69_0
 # 照明 ( DMX ) との連携
 
 このリポジトリに DMX を直接制御するコードは無い。
-`ofApp::update()` から OSC で `localhost:7700` に `/bg`（ 背景色 ）を送っており、
-それを [ QLC+ ]( https://www.qlcplus.org/ ) の OSC 入力プラグインで受けて DMX に変換している。
-QLC+ のワークスペースは `dmx.qxw`。
+`ofApp` から OSC を送り、それを [ Chataigne ]( http://benjamin.kuperberg.fr/chataigne/ ) が受けて
+DMX USB ( FT232R / Enttec Open DMX 互換 ) へ変換している。
+Chataigne のプロジェクトは `hand.noisette`。
+
+送信先は `config.txt` の `osc.host` / `osc.port` で変更できる。
+
+| アドレス | 引数 | 送るタイミング |
+| --- | --- | --- |
+| `/bg` | float ( 背景色 ) | 毎フレーム |
+| `/page` | ページ名 | ページが変わったとき |
+| `/bass` | float ( ベースの音量 ) | BASS ページで毎フレーム |
+| `/tap` | なし ( トリガー ) | タップしたとき |
+| `/rps` | `r` / `p` / `s` / `thumbs_up` | RPS ページで音が鳴ったとき |
+| `/fox` | `1` / `2` / `3` / `fox` | FOX ページで音が鳴ったとき |
+
+DMX のチャンネル割り当ては Pan=1, Tilt=3, Dimming=6, Strobing=7, RGBW=8/9/10/11 の計 11ch。
+
+以前は QLC+ を使っていた。そのワークスペース ( `dmx.qxw` ) はコミット `0bb471c` に残してある。
