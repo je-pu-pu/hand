@@ -81,8 +81,7 @@ ofApp::ofApp( Hand& hand )
 
 		// タップのフラグは 1 step の間しか立たないので、ここで拾っておく。
 		// OSC の送信自体はオーディオコールバックからは行わず、update() に任せる。
-		if ( audio().get_page() == HandAudio::Page::TAP &&
-			 ( audio().is_l_tapped() || audio().is_r_tapped() ) )
+		if ( audio().is_l_tapped() || audio().is_r_tapped() )
 		{
 			is_tap_pending_ = true;
 		}
