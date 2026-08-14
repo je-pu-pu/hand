@@ -51,7 +51,7 @@ public:
 
 	void start( bool block = true )
 	{
-		gam::AudioDevice::printAll();
+		AudioCallback::print_devices();
 
 		int in = 0;
 		int out = 0;
