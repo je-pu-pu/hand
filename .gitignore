@@ -31,6 +31,8 @@
 /openFrameworksHand/*.dll
 /openFrameworksHand/data/
 
+*.wav
+
 /tracking-software-*.zip
 /tracking-software-*/
 
