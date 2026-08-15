@@ -154,6 +154,13 @@ void ofApp::update()
 		send_osc_float( "/bass", audio().get_bass_volume() );
 	}
 
+	// スライダーの値はページを問わず送る
+	// ( 操作中のページではなく、いま鳴っているページの値。音と照明を合わせるため )
+	const int sounding_page = static_cast< int >( audio().get_page() );
+
+	send_osc_float( "/l_slider", leap().l_slider( sounding_page ) );
+	send_osc_float( "/r_slider", leap().r_slider( sounding_page ) );
+
 	if ( is_tap_pending_.exchange( false ) )
 	{
 		send_osc_trigger( "/tap" );
