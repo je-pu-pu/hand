@@ -43,6 +43,9 @@ protected:
 	/// タップされたことをオーディオスレッドから update() へ渡すためのフラグ
 	std::atomic< bool > is_tap_pending_{ false };
 
+	/// 拍の頭で送る拍数 ( 0 .. 3 )。-1 なら送るものが無い
+	std::atomic< int > pending_beat_{ -1 };
+
 	/// 手の形で鳴った音をオーディオスレッドから update() へ渡す。null なら送るものが無い
 	std::atomic< const ShapeMessage* > pending_shape_message_{ nullptr };
 
@@ -50,6 +53,7 @@ protected:
 
 	void send_osc_string( const std::string& address, const std::string& value );
 	void send_osc_float( const std::string& address, float value );
+	void send_osc_int( const std::string& address, int value );
 	void send_osc_trigger( const std::string& address );
 
 	const HandAudioCallback& audio() const;

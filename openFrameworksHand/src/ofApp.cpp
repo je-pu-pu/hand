@@ -79,11 +79,16 @@ ofApp::ofApp( Hand& hand )
 			rh_point_size_ = POINT_SIZE_MAX;
 		}
 
-		// タップのフラグは 1 step の間しか立たないので、ここで拾っておく。
+		// タップや拍のフラグは 1 step の間しか立たないので、ここで拾っておく。
 		// OSC の送信自体はオーディオコールバックからは行わず、update() に任せる。
 		if ( audio().is_l_tapped() || audio().is_r_tapped() )
 		{
 			is_tap_pending_ = true;
+		}
+
+		if ( on_beat )
+		{
+			pending_beat_ = audio().get_beat();
 		}
 
 		// 手の形で音が鳴ったら、どの形だったかを照明側へ伝える
@@ -154,6 +159,13 @@ void ofApp::update()
 		send_osc_trigger( "/tap" );
 	}
 
+	const int beat = pending_beat_.exchange( -1 );
+
+	if ( beat >= 0 )
+	{
+		send_osc_int( "/beat", beat );
+	}
+
 	if ( const ShapeMessage* message = pending_shape_message_.exchange( nullptr ) )
 	{
 		send_osc_string( message->address, message->value );
@@ -165,6 +177,14 @@ void ofApp::send_osc_trigger( const std::string& address )
 {
 	ofxOscMessage m;
 	m.setAddress( address );
+	osc_sender_.sendMessage( m );
+}
+
+void ofApp::send_osc_int( const std::string& address, int value )
+{
+	ofxOscMessage m;
+	m.setAddress( address );
+	m.addIntArg( value );
 	osc_sender_.sendMessage( m );
 }
 
