@@ -264,6 +264,13 @@ void ofApp::draw(){
 
 	draw_text( font_small_, time.str(), ( font_small_.getAscenderHeight() / 2 ) );
 
+	// ページがロック中であることを、時刻と対になる画面の下端に表示する。
+	// 描くのはロック中だけなので、ふだんの描画は重くならない。
+	if ( leap().is_page_locked() )
+	{
+		draw_text( font_small_, "LOCK", ofGetWindowHeight() - font_small_.getAscenderHeight() / 2 );
+	}
+
 	ofDrawBitmapStringHighlight( "FPS : " + std::to_string( ofGetFrameRate() ), 0, 10 );
 	ofDrawBitmapStringHighlight( "MIC VOL : " + std::to_string( audio().get_mic_volume() ), 0, 30 );
 	ofDrawBitmapStringHighlight( "BGM VOL : " + std::to_string( audio().get_bgm_volume() ), 0, 50 );

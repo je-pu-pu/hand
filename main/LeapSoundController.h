@@ -4,6 +4,7 @@
 #include <iostream>
 #include <array>
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <chrono>
 #include <Leap.h>
@@ -109,6 +110,10 @@ private:
 	int page_ = 0;
 	bool page_incremented_ = false;
 	bool page_decremented_ = false;
+
+	/// ページがロックされているか？ ( ロック中は手の操作ではページが変わらない )
+	/// キー入力 ( オーディオのスレッド ) / スワイプ ( Leap のスレッド ) / 描画 ( メインスレッド ) から触るので atomic にしている
+	std::atomic< bool > is_page_locked_{ false };
 
 	// この時間までスワイプジェスチャーを停止する
 	std::chrono::system_clock::time_point swipe_stop_until_ = std::chrono::system_clock::now();
@@ -344,6 +349,9 @@ public:
 	bool is_page_incremented() const { return page_incremented_; }
 	bool is_page_decremented() const { return page_decremented_; }
 
+	bool is_page_locked() const { return is_page_locked_; }
+	void toggle_page_lock() { is_page_locked_ = ! is_page_locked_; }
+
 	bool pop_l_tapped()
 	{
 		bool result = l_tapped_;
@@ -555,6 +563,15 @@ protected:
 
 	void on_swipe_gesture( const Leap::SwipeGesture& swipe )
 	{
+		// ロック中はスワイプでページを変えない ( 観客に手をかざしてもらう間の誤操作を防ぐ )
+		if ( is_page_locked() )
+		{
+			// ロックを解除した瞬間に、やりかけのスワイプでページが変わらないようにする
+			swipe_stop_until_ = std::chrono::system_clock::now() + std::chrono::milliseconds( 1000 );
+
+			return;
+		}
+
 		if ( swipe.state() != Leap::Gesture::STATE_STOP )
 		{
 			return;

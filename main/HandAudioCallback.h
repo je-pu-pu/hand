@@ -164,6 +164,9 @@ private:
 	bool is_left_key_down_ = false;
 	bool is_right_key_down_ = false;
 
+	/// 前回の key_input() 呼び出し時にページのロックを切り替えるキーが押されていたか？
+	bool is_lock_key_down_ = false;
+
 	gam::Array< float > common_tone_buffer_;
 	gam::Array< float > kick_buffer_;
 	gam::Array< float > snare_buffer_;
@@ -352,6 +355,13 @@ public:
 		if ( is_key_just_pressed( VK_RIGHT, is_right_key_down_ ) )
 		{
 			leap.increment_page();
+		}
+
+		// L キーでページのロックを切り替える ( 押しっぱなしでも 1 回だけ反応させる )
+		// ロック中でも、上の矢印キーによるページ移動は効く ( 手の操作だけを止める )
+		if ( is_key_just_pressed( 'L', is_lock_key_down_ ) )
+		{
+			leap.toggle_page_lock();
 		}
 
 		const float speed = 0.001f;
@@ -764,7 +774,8 @@ public:
 
 		if ( page == Page::CLIMAX && ( bar_ / 4 % 4 ) == 3 && ( bar_ % 4 ) == 0 && step_ == 1 )
 		{
-			if ( get_slider_value_r( page ) >= 1.f )
+			// ロック中は、スライダーを上げきっても FINISH へ進めない
+			if ( get_slider_value_r( page ) >= 1.f && ! leap.is_page_locked() )
 			{
 				leap.increment_page();
 			}
